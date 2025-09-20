@@ -1,0 +1,285 @@
+{
+  "postgres_vector_mcp": {
+    "name": "postgres_vector_mcp",
+    "version": "1.0.0",
+    "description": "MCP for PostgreSQL with pgvector operations",
+    "server": {
+      "command": "python",
+      "args": ["-m", "postgres_vector_server"],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:password@localhost:5432/eugene_rag"
+      }
+    },
+    "tools": [
+      {
+        "name": "store_embeddings",
+        "description": "Store text chunks with embeddings in PostgreSQL",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {"type": "string"},
+            "embedding": {"type": "array"},
+            "metadata": {"type": "object"}
+          },
+          "required": ["text", "embedding"]
+        }
+      },
+      {
+        "name": "similarity_search",
+        "description": "Search for similar content using vector similarity",
+        "parameters": {
+          "type": "object", 
+          "properties": {
+            "query": {"type": "string"},
+            "limit": {"type": "integer", "default": 5},
+            "threshold": {"type": "number", "default": 0.7}
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "get_context",
+        "description": "Retrieve contextual information for Eugene analysis",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "category": {"type": "string", "enum": ["consciousness_levels", "frameworks", "techniques", "examples"]},
+            "query": {"type": "string"},
+            "max_results": {"type": "integer", "default": 3}
+          },
+          "required": ["category", "query"]
+        }
+      },
+      {
+        "name": "create_collection",
+        "description": "Create new collection for specific Eugene content",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "description": {"type": "string"}
+          },
+          "required": ["name"]
+        }
+      }
+    ]
+  },
+
+  "n8n_api_mcp": {
+    "name": "n8n_api_mcp", 
+    "version": "1.0.0",
+    "description": "MCP for N8N workflow management via API",
+    "server": {
+      "command": "python",
+      "args": ["-m", "n8n_api_server"],
+      "env": {
+        "N8N_API_KEY": "${N8N_API_KEY}",
+        "N8N_BASE_URL": "http://localhost:5678"
+      }
+    },
+    "tools": [
+      {
+        "name": "create_workflow",
+        "description": "Create new N8N workflow via API",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "nodes": {"type": "array"},
+            "connections": {"type": "object"},
+            "settings": {"type": "object"}
+          },
+          "required": ["name", "nodes", "connections"]
+        }
+      },
+      {
+        "name": "update_workflow",
+        "description": "Update existing workflow configuration",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "workflow_id": {"type": "string"},
+            "updates": {"type": "object"}
+          },
+          "required": ["workflow_id", "updates"]
+        }
+      },
+      {
+        "name": "test_workflow",
+        "description": "Execute workflow test with sample data",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "workflow_id": {"type": "string"},
+            "test_data": {"type": "object"}
+          },
+          "required": ["workflow_id", "test_data"]
+        }
+      },
+      {
+        "name": "export_workflow",
+        "description": "Export workflow as JSON",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "workflow_id": {"type": "string"},
+            "format": {"type": "string", "default": "json"}
+          },
+          "required": ["workflow_id"]
+        }
+      },
+      {
+        "name": "list_workflows",
+        "description": "List all available workflows",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "active_only": {"type": "boolean", "default": false}
+          }
+        }
+      }
+    ]
+  },
+
+  "file_operations_mcp": {
+    "name": "file_operations_mcp",
+    "version": "1.0.0", 
+    "description": "MCP for advanced file operations and PDF processing",
+    "server": {
+      "command": "python",
+      "args": ["-m", "file_operations_server"]
+    },
+    "tools": [
+      {
+        "name": "extract_pdf_text",
+        "description": "Extract text from PDF preserving structure",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": {"type": "string"},
+            "preserve_formatting": {"type": "boolean", "default": true},
+            "extract_metadata": {"type": "boolean", "default": true}
+          },
+          "required": ["file_path"]
+        }
+      },
+      {
+        "name": "semantic_chunking",
+        "description": "Perform semantic chunking of text",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {"type": "string"},
+            "chunk_size": {"type": "integer", "default": 1000},
+            "overlap": {"type": "integer", "default": 200},
+            "preserve_sentences": {"type": "boolean", "default": true}
+          },
+          "required": ["text"]
+        }
+      },
+      {
+        "name": "generate_embeddings",
+        "description": "Generate embeddings for text chunks",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "texts": {"type": "array"},
+            "model": {"type": "string", "default": "text-embedding-3-large"}
+          },
+          "required": ["texts"]
+        }
+      },
+      {
+        "name": "save_structured_data",
+        "description": "Save data in structured format",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "data": {"type": "object"},
+            "file_path": {"type": "string"},
+            "format": {"type": "string", "enum": ["json", "yaml", "csv"], "default": "json"}
+          },
+          "required": ["data", "file_path"]
+        }
+      },
+      {
+        "name": "create_directory_structure",
+        "description": "Create project directory structure",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "base_path": {"type": "string"},
+            "structure": {"type": "object"}
+          },
+          "required": ["base_path", "structure"]
+        }
+      }
+    ]
+  },
+
+  "llm_testing_mcp": {
+    "name": "llm_testing_mcp",
+    "version": "1.0.0",
+    "description": "MCP for testing and validating LLM outputs",
+    "server": {
+      "command": "python", 
+      "args": ["-m", "llm_testing_server"],
+      "env": {
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
+      }
+    },
+    "tools": [
+      {
+        "name": "test_prompt_quality",
+        "description": "Test prompt quality with sample inputs",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "prompt": {"type": "string"},
+            "test_cases": {"type": "array"},
+            "expected_format": {"type": "string"}
+          },
+          "required": ["prompt", "test_cases"]
+        }
+      },
+      {
+        "name": "validate_json_output",
+        "description": "Validate LLM output against JSON schema",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "output": {"type": "string"},
+            "schema": {"type": "object"}
+          },
+          "required": ["output", "schema"]
+        }
+      },
+      {
+        "name": "benchmark_response_time",
+        "description": "Benchmark LLM response times",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "prompt": {"type": "string"},
+            "iterations": {"type": "integer", "default": 5},
+            "model": {"type": "string", "default": "claude-3-5-sonnet-20241022"}
+          },
+          "required": ["prompt"]
+        }
+      },
+      {
+        "name": "compare_model_outputs",
+        "description": "Compare outputs from different models",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "prompt": {"type": "string"},
+            "models": {"type": "array"},
+            "evaluation_criteria": {"type": "array"}
+          },
+          "required": ["prompt", "models"]
+        }
+      }
+    ]
+  }
+}

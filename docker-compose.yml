@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres-vector:
+    image: ankane/pgvector
+    container_name: eugene_postgres
+    environment:
+      POSTGRES_DB: eugene_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d eugene_rag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n
+    container_name: eugene_n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_HOST=localhost
+      - WEBHOOK_URL=http://localhost:5678
+    ports:
+      - "5678:5678"
+    depends_on:
+      postgres-vector:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rag-api:
+    build:
+      context: .
+      dockerfile: ./docker/rag-api.Dockerfile
+    container_name: eugene_rag_api
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres-vector:5432/eugene_rag
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-vector:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  n8n_data:
+
+networks:
+  default:
+    name: eugene_network
