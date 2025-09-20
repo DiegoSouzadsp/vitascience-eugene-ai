@@ -25,10 +25,18 @@ Especialista em automação N8N via API, criando workflows funcionais rapidament
 ### Core Workflow Structure
 ```python
 class N8NWorkflowGenerator:
-    def __init__(self, n8n_url: str, api_key: str = None):
-        self.base_url = n8n_url
-        self.api_key = api_key
+    def __init__(self, n8n_url: str = None, api_key: str = None):
+        # Remote N8N configuration
+        self.base_url = n8n_url or os.getenv('N8N_BASE_URL', 'http://IP_DO_NOTEBOOK:5678')
+        self.api_key = api_key or os.getenv('N8N_API_KEY')
         self.session = requests.Session()
+
+        # Configure API authentication
+        if self.api_key:
+            self.session.headers.update({
+                "X-N8N-API-KEY": self.api_key,
+                "Content-Type": "application/json"
+            })
 
     def create_eugene_workflow(self) -> Dict:
         """Cria workflow completo Eugene Schwartz"""
