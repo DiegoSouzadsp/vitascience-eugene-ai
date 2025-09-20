@@ -1,0 +1,507 @@
+{
+  "name": "Eugene VSL Analyzer - Squad Vitascience (Fallback Ready)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/analyze-vsl-squad",
+        "responseMode": "responseNode",
+        "options": {
+          "ignoreBots": false
+        }
+      },
+      "id": "webhook-vsl-input",
+      "name": "Webhook - VSL Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "eugene-vsl-squad-analyzer"
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:8000/rag/search",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"query\": \"consciousness levels Eugene Schwartz methodology\",\n  \"max_results\": 3\n} }}",
+        "options": {
+          "timeout": 5000,
+          "retry": {
+            "enabled": false
+          }
+        }
+      },
+      "id": "rag-check",
+      "name": "RAG System Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "rag-available",
+              "leftValue": "={{ $('RAG System Check').first().json.error || 'ok' }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-rag-fallback",
+      "name": "Route: RAG or Fallback",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:8000/analyze/consciousness",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $('Webhook - VSL Input').first().json.vsl_text,\n  \"analysis_type\": \"consciousness\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rag-consciousness",
+      "name": "RAG: Consciousness Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 160]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022",
+        "prompt": "=Analise o seguinte texto de VSL segundo a metodologia Eugene Schwartz dos 5 níveis de consciência:\n\nTEXTO:\n{{ $('Webhook - VSL Input').first().json.vsl_text }}\n\nNÍVEIS DE CONSCIÊNCIA EUGENE SCHWARTZ:\n1. UNAWARE (Inconsciente): Cliente não sabe que tem problema\n2. PROBLEM AWARE (Ciente do Problema): Sabe que tem problema, não sabe soluções\n3. SOLUTION AWARE (Ciente da Solução): Conhece soluções, não sabe qual escolher\n4. PRODUCT AWARE (Ciente do Produto): Conhece seu produto, não está convencido\n5. MOST AWARE (Mais Consciente): Pronto para comprar, precisa apenas de incentivo\n\nRETORNE UM JSON EXATO neste formato:\n{\n  \"nivel_identificado\": 1-5,\n  \"confianca\": 0.0-1.0,\n  \"justificativa\": \"explicação detalhada\",\n  \"indicadores_textuais\": [\"frase1\", \"frase2\", \"frase3\"],\n  \"nivel_ideal_sugerido\": 1-5,\n  \"razao_sugestao\": \"por que este nível seria melhor\"\n}",
+        "options": {},
+        "requestOptions": {
+          "timeout": 45000
+        }
+      },
+      "id": "fallback-consciousness",
+      "name": "Fallback: Claude Consciousness",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [900, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "claude-api",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022",
+        "prompt": "=Analise o framework de copywriting do seguinte texto VSL:\n\nTEXTO:\n{{ $('Webhook - VSL Input').first().json.vsl_text }}\n\nFrameworks possíveis: PAS (Problem-Agitation-Solution), AIDA (Attention-Interest-Desire-Action), BEFORE-AFTER-BRIDGE, STAR-STORY-SOLUTION, etc.\n\nRETORNE UM JSON EXATO neste formato:\n{\n  \"framework_principal\": \"nome do framework\",\n  \"confianca_identificacao\": 0.0-1.0,\n  \"estrutura_completa\": {\n    \"introducao\": \"como inicia\",\n    \"desenvolvimento\": \"como desenvolve\",\n    \"fechamento\": \"como fecha\"\n  },\n  \"pontos_fortes_estruturais\": [\"força1\", \"força2\"],\n  \"pontos_fracos_estruturais\": [\"fraco1\", \"fraco2\"]\n}",
+        "options": {},
+        "requestOptions": {
+          "timeout": 45000
+        }
+      },
+      "id": "fallback-framework",
+      "name": "Fallback: Claude Framework",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [900, 520],
+      "credentials": {
+        "openAiApi": {
+          "id": "claude-api",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022",
+        "prompt": "=Identifique problemas de copywriting no texto VSL segundo Eugene Schwartz:\n\nTEXTO:\n{{ $('Webhook - VSL Input').first().json.vsl_text }}\n\nCATEGORIAS DE PROBLEMAS:\n- Consciência inadequada para o público\n- Estrutura/framework mal aplicado\n- CTA fraco ou confuso\n- Falta de agitação do problema\n- Solução não convincente\n- Prova social insuficiente\n- Urgência/escassez mal trabalhada\n\nRETORNE UM JSON EXATO neste formato:\n{\n  \"problema_principal\": \"principal problema identificado\",\n  \"score_geral_copy\": 1-10,\n  \"problemas_identificados\": [\n    {\n      \"problema\": \"descrição do problema\",\n      \"categoria\": \"categoria do problema\",\n      \"severidade\": 1-10,\n      \"localizacao\": \"onde no texto\",\n      \"por_que_problema\": \"explicação\",\n      \"impacto_conversao\": \"como afeta conversão\"\n    }\n  ]\n}",
+        "options": {},
+        "requestOptions": {
+          "timeout": 45000
+        }
+      },
+      "id": "fallback-problems",
+      "name": "Fallback: Claude Problems",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [900, 640],
+      "credentials": {
+        "openAiApi": {
+          "id": "claude-api",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022",
+        "prompt": "=Com base nos problemas identificados, gere melhorias específicas seguindo Eugene Schwartz:\n\nPROBLEMAS IDENTIFICADOS:\n{{ JSON.stringify($('Fallback: Claude Problems').first().json.problemas_identificados || $('RAG: Problems Analysis').first().json.problemas_identificados) }}\n\nTEXTO ORIGINAL:\n{{ $('Webhook - VSL Input').first().json.vsl_text.substring(0, 1000) }}...\n\nComo Eugene Schwartz consertaria cada problema? Forneça:\n- Melhorias específicas\n- Quick wins (mudanças rápidas)\n- Reescritas de exemplo\n- Novos ângulos de abordagem\n\nRETORNE UM JSON EXATO neste formato:\n{\n  \"melhorias_sugeridas\": [\n    {\n      \"melhoria\": \"título da melhoria\",\n      \"problema_resolvido\": \"qual problema resolve\",\n      \"metodologia_eugene\": \"como Eugene faria\",\n      \"implementacao\": \"como implementar\",\n      \"exemplo_reescrito\": \"exemplo de reescrita\",\n      \"impacto_esperado\": \"impacto na conversão\"\n    }\n  ],\n  \"melhorias_quick_wins\": [\"win1\", \"win2\", \"win3\"],\n  \"novos_angulos_abordagem\": [\"ângulo1\", \"ângulo2\"],\n  \"prioridade_implementacao\": [\"prioridade1\", \"prioridade2\"]\n}",
+        "options": {},
+        "requestOptions": {
+          "timeout": 60000
+        }
+      },
+      "id": "fallback-improvements",
+      "name": "Fallback: Claude Improvements",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.1,
+      "position": [1120, 640],
+      "credentials": {
+        "openAiApi": {
+          "id": "claude-api",
+          "name": "Claude API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:8000/analyze/framework",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $('Webhook - VSL Input').first().json.vsl_text,\n  \"analysis_type\": \"framework\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rag-framework",
+      "name": "RAG: Framework Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 240]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:8000/analyze/problems",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $('Webhook - VSL Input').first().json.vsl_text,\n  \"analysis_type\": \"problems\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "rag-problems",
+      "name": "RAG: Problems Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 320]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:8000/analyze/improvements",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"problemas_identificados\": $('RAG: Problems Analysis').first().json.problemas_identificados,\n  \"vsl_text\": $('Webhook - VSL Input').first().json.vsl_text\n} }}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "rag-improvements",
+      "name": "RAG: Generate Improvements",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "analysis_source",
+              "value": "={{ $('Route: RAG or Fallback').first().json ? 'RAG' : 'Fallback_Claude' }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now }}"
+            },
+            {
+              "name": "vsl_metadata",
+              "value": "={{ {\n  \"length\": $('Webhook - VSL Input').first().json.vsl_text.length,\n  \"word_count\": $('Webhook - VSL Input').first().json.vsl_text.split(' ').length,\n  \"analysis_id\": $('Webhook - VSL Input').first().json.analysis_id || $runIndex\n} }}"
+            },
+            {
+              "name": "consciousness_analysis",
+              "value": "={{ $('RAG: Consciousness Analysis').first().json || $('Fallback: Claude Consciousness').first().json }}"
+            },
+            {
+              "name": "framework_analysis",
+              "value": "={{ $('RAG: Framework Analysis').first().json || $('Fallback: Claude Framework').first().json }}"
+            },
+            {
+              "name": "problems_analysis",
+              "value": "={{ $('RAG: Problems Analysis').first().json || $('Fallback: Claude Problems').first().json }}"
+            },
+            {
+              "name": "improvements_analysis",
+              "value": "={{ $('RAG: Generate Improvements').first().json || $('Fallback: Claude Improvements').first().json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "merge-results",
+      "name": "Merge Analysis Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Estruturar resposta final no formato Squad Vitascience\nconst data = $input.first().json;\n\n// Extrair dados das análises\nconst consciousness = data.consciousness_analysis || {};\nconst framework = data.framework_analysis || {};\nconst problems = data.problems_analysis || {};\nconst improvements = data.improvements_analysis || {};\n\n// Estruturar resposta conforme especificação\nconst response = {\n  // Metadados da análise\n  analysis_metadata: {\n    id: data.vsl_metadata.analysis_id,\n    timestamp: data.timestamp,\n    source: data.analysis_source,\n    vsl_stats: {\n      character_count: data.vsl_metadata.length,\n      word_count: data.vsl_metadata.word_count\n    }\n  },\n  \n  // 1. Nível de consciência (1-5) + justificativa\n  consciousness_level: {\n    level: consciousness.nivel_identificado || 3,\n    confidence: Math.round((consciousness.confianca || 0.8) * 100),\n    justification: consciousness.justificativa || \"Análise baseada em padrões identificados no texto\",\n    text_indicators: consciousness.indicadores_textuais || [],\n    recommended_level: consciousness.nivel_ideal_sugerido || consciousness.nivel_identificado,\n    level_explanation: {\n      \"1\": \"UNAWARE - Cliente não sabe que tem problema\",\n      \"2\": \"PROBLEM AWARE - Sabe que tem problema, não sabe soluções\", \n      \"3\": \"SOLUTION AWARE - Conhece soluções, não sabe qual escolher\",\n      \"4\": \"PRODUCT AWARE - Conhece seu produto, não está convencido\",\n      \"5\": \"MOST AWARE - Pronto para comprar, precisa apenas de incentivo\"\n    }[consciousness.nivel_identificado] || \"Nível não identificado\"\n  },\n  \n  // 2. Framework identificado (PAS, AIDA, etc)\n  copywriting_framework: {\n    main_framework: framework.framework_principal || \"Não identificado\",\n    confidence: Math.round((framework.confianca_identificacao || 0.7) * 100),\n    structure: framework.estrutura_completa || {\n      introduction: \"Não analisado\",\n      development: \"Não analisado\", \n      closing: \"Não analisado\"\n    },\n    structural_strengths: framework.pontos_fortes_estruturais || [],\n    structural_weaknesses: framework.pontos_fracos_estruturais || []\n  },\n  \n  // 3. Problemas identificados\n  identified_problems: {\n    main_problem: problems.problema_principal || \"Problema principal não identificado\",\n    overall_score: problems.score_geral_copy || 5,\n    problems_list: (problems.problemas_identificados || []).map((prob, index) => ({\n      id: index + 1,\n      problem: prob.problema || \"Problema não especificado\",\n      category: prob.categoria || \"Geral\",\n      severity: prob.severidade || 5,\n      location: prob.localizacao || \"Não especificado\",\n      why_problem: prob.por_que_problema || \"Impacta negativamente a conversão\",\n      conversion_impact: prob.impacto_conversao || \"Redução na taxa de conversão\"\n    }))\n  },\n  \n  // 4. Melhorias sugeridas + novos ângulos\n  suggested_improvements: {\n    quick_wins: improvements.melhorias_quick_wins || [],\n    priority_order: improvements.prioridade_implementacao || [],\n    new_angles: improvements.novos_angulos_abordagem || [],\n    detailed_improvements: (improvements.melhorias_sugeridas || []).map((mel, index) => ({\n      id: index + 1,\n      improvement: mel.melhoria || \"Melhoria não especificada\",\n      solves_problem: mel.problema_resolvido || \"Problema geral\",\n      eugene_methodology: mel.metodologia_eugene || \"Aplicação da metodologia Eugene Schwartz\",\n      implementation: mel.implementacao || \"Implementar conforme metodologia\",\n      rewritten_example: mel.exemplo_reescrito || \"Exemplo não disponível\",\n      expected_impact: mel.impacto_esperado || \"Melhoria na conversão esperada\"\n    }))\n  },\n  \n  // 5. Como Eugene consertaria (síntese)\n  eugene_fix_summary: {\n    main_approach: `Eugene Schwartz consertaria focando no nível de consciência ${consciousness.nivel_identificado || 3} e aplicando o framework ${framework.framework_principal || 'adequado'} de forma mais precisa.`,\n    key_changes: [\n      \"Ajustar linguagem para o nível de consciência correto\",\n      \"Fortalecer a agitação do problema\", \n      \"Melhorar a apresentação da solução\",\n      \"Intensificar elementos de urgência e escassez\",\n      \"Adicionar mais prova social relevante\"\n    ],\n    expected_result: \"Aumento significativo na taxa de conversão através da aplicação precisa da metodologia dos 5 níveis de consciência\"\n  },\n  \n  // Status e qualidade\n  analysis_quality: {\n    completeness: problems.problemas_identificados?.length >= 3 ? \"Alta\" : \"Média\",\n    confidence_score: Math.round((\n      (consciousness.confianca || 0.8) + \n      (framework.confianca_identificacao || 0.7)\n    ) / 2 * 100),\n    recommendations_count: improvements.melhorias_sugeridas?.length || 0\n  }\n};\n\nreturn { json: response };"
+      },
+      "id": "format-squad-response",
+      "name": "Format Squad Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 400]
+    },
+    {
+      "parameters": {
+        "authentication": "generic",
+        "requestMethod": "POST",
+        "url": "={{ $('Webhook - VSL Input').first().json.callback_url || 'https://webhook.site/test' }}",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"status\": \"completed\",\n  \"analysis_id\": $('Format Squad Response').first().json.analysis_metadata.id,\n  \"result\": $('Format Squad Response').first().json\n} }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "notify-callback",
+      "name": "Notify Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 580],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook - VSL Input": {
+      "main": [
+        [
+          {
+            "node": "RAG System Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG System Check": {
+      "main": [
+        [
+          {
+            "node": "Route: RAG or Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route: RAG or Fallback": {
+      "main": [
+        [
+          {
+            "node": "RAG: Consciousness Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RAG: Framework Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RAG: Problems Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback: Claude Consciousness",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fallback: Claude Framework",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fallback: Claude Problems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG: Consciousness Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG: Framework Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG: Problems Analysis": {
+      "main": [
+        [
+          {
+            "node": "RAG: Generate Improvements",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG: Generate Improvements": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback: Claude Consciousness": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback: Claude Framework": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback: Claude Problems": {
+      "main": [
+        [
+          {
+            "node": "Fallback: Claude Improvements",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback: Claude Improvements": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Analysis Results": {
+      "main": [
+        [
+          {
+            "node": "Format Squad Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Squad Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "eugene-vsl-squad-v1.0",
+  "meta": {
+    "templateCreatedBy": "Vitascience Eugene AI - N8N Generator",
+    "description": "Workflow completo para análise VSL Eugene Schwartz com sistema de fallback para Squad Vitascience",
+    "tags": ["eugene-schwartz", "vsl-analysis", "vitascience", "squad", "fallback-ready"]
+  },
+  "id": "eugene-vsl-squad-analyzer",
+  "tags": [
+    {
+      "createdAt": "2024-09-20T10:30:00.000Z",
+      "updatedAt": "2024-09-20T10:30:00.000Z",
+      "id": "vitascience-squad",
+      "name": "Vitascience Squad"
+    }
+  ]
+}

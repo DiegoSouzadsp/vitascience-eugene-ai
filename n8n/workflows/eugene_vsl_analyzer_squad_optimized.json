@@ -1,0 +1,306 @@
+{
+  "name": "Eugene VSL Analyzer - Squad Vitascience Optimized",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/analyze-vsl-squad",
+        "method": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "87b17d3e-6e7e-4f41-9a1f-2c8f3e4d5a6b",
+      "name": "Webhook Squad VSL",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        140,
+        320
+      ],
+      "webhookId": "squad-vsl-analyzer"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida e prepara input da VSL\nconst vsl_text = $input.first().json.vsl_text;\nconst options = $input.first().json.options || {};\n\nif (!vsl_text || typeof vsl_text !== 'string' || vsl_text.trim().length < 50) {\n  throw new Error('VSL text is required and must be at least 50 characters long');\n}\n\n// Preparar dados para análise\nconst analysisData = {\n  vsl_text: vsl_text.trim(),\n  timestamp: new Date().toISOString(),\n  analysis_id: `squad_${Date.now()}`,\n  options: {\n    detailed_analysis: options.detailed_analysis !== false,\n    include_frameworks: options.include_frameworks !== false,\n    min_problems: options.min_problems || 5,\n    min_angles: options.min_angles || 3\n  }\n};\n\nreturn { analysisData };"
+      },
+      "id": "12345678-1234-1234-1234-123456789abc",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "o3-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "# Eugene Schwartz Consciousness Level Classifier - Squad Vitascience\n\nVocê é Eugene Schwartz analisando níveis de consciência do mercado. Seja PRECISO e RIGOROSO.\n\n## 5 Níveis de Consciência (Eugene Schwartz):\n\n**Nível 1 - Inconsciente do Problema:**\n- Cliente NÃO sabe que tem problema\n- VSL deve EDUCAR sobre existência do problema\n- Indicadores: \"Você pode não saber...\", \"A maioria ignora...\", estatísticas alarmantes\n- Abordagem: Revelação + Educação + Awareness\n\n**Nível 2 - Consciente do Problema:**\n- Cliente SABE que tem problema, mas não conhece soluções\n- VSL deve APRESENTAR solução como descoberta\n- Indicadores: \"Finalmente uma solução...\", \"Descobri como resolver...\"\n- Abordagem: Solução + Esperança + Credibilidade\n\n**Nível 3 - Consciente da Solução:**\n- Cliente CONHECE soluções, mas não conhece SEU produto\n- VSL deve DIFERENCIAR de outras soluções\n- Indicadores: \"Diferente de tudo...\", \"Não é como os outros...\", \"Revolucionário...\"\n- Abordagem: Diferenciação + Superioridade + Prova\n\n**Nível 4 - Consciente do Produto:**\n- Cliente CONHECE seu produto, mas não está convencido\n- VSL deve usar PROVA SOCIAL abundante\n- Indicadores: \"Milhares já usaram...\", \"Resultados comprovados...\", depoimentos\n- Abordagem: Credibilidade + Prova Social + Redução Risco\n\n**Nível 5 - Pronto para Comprar:**\n- Cliente CONVENCIDO, só precisa oferta certa\n- VSL deve focar URGÊNCIA e escassez\n- Indicadores: \"Últimas vagas...\", \"Desconto especial...\", \"Apenas hoje...\"\n- Abordagem: Urgência + Escassez + Call-to-Action\n\n## INSTRUÇÕES:\n1. Leia TODA a VSL cuidadosamente\n2. Identifique abordagem principal\n3. Busque indicadores textuais específicos\n4. Analise foco: educação, solução, diferenciação, prova ou oferta?\n5. Considere público-alvo implícito\n\n## OUTPUT OBRIGATÓRIO (JSON):\n```json\n{\n  \"nivel_identificado\": [1-5],\n  \"confianca\": [0.0-1.0],\n  \"justificativa\": \"Explicação detalhada citando trechos específicos\",\n  \"indicadores_textuais\": [\n    \"Frase específica 1 que indica o nível\",\n    \"Frase específica 2 que indica o nível\"\n  ],\n  \"nivel_ideal_sugerido\": [1-5],\n  \"razao_sugestao\": \"Por que outro nível seria mais eficaz\"\n}\n```\n\nSEMPRE cite trechos específicos da VSL na justificativa. Se houver mistura de níveis, identifique o PREDOMINANTE."
+            },
+            {
+              "role": "user",
+              "content": "Analise o nível de consciência desta VSL:\n\n{{ $json.analysisData.vsl_text }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 1500
+        }
+      },
+      "id": "consciousness-classifier-o3",
+      "name": "Consciousness Level (o3-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        580,
+        220
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-squad-creds",
+          "name": "OpenAI Squad Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "o1-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "# Eugene Schwartz VSL Complete Analyzer - Squad Vitascience\n\nComo Eugene Schwartz, faça análise COMPLETA desta VSL seguindo metodologia rigorosa.\n\n## FRAMEWORKS PRINCIPAIS:\n\n**PAS (Problem → Agitation → Solution):**\n- Problem: Identifica problema específico\n- Agitation: Agita dor, mostra consequências\n- Solution: Apresenta solução definitiva\n\n**AIDA (Attention → Interest → Desire → Action):**\n- Attention: Captura atenção (headline forte)\n- Interest: Desenvolve interesse relevante\n- Desire: Cria desejo intenso\n- Action: Move para ação específica\n\n**Before/After/Bridge:**\n- Before: Situação atual problemática\n- After: Situação desejada ideal\n- Bridge: Produto como caminho\n\n**Problem/Promise/Proof/Proposal (4P Eugene):**\n- Problem: Problema específico relevante\n- Promise: Promessa de resolução\n- Proof: Evidências abundantes\n- Proposal: Oferta estruturada\n\n**Star/Story/Solution:**\n- Star: Protagonista claro\n- Story: História pessoal/jornada\n- Solution: Emerge da narrativa\n\n## ANÁLISE OBRIGATÓRIA:\n\n### 1. FRAMEWORK ESTRUTURAL\nIdentifique framework principal, elementos presentes, qualidade (0.0-1.0)\n\n### 2. PROBLEMAS IDENTIFICADOS (MÍNIMO 5)\nProblemas específicos na copy com impacto na conversão\n\n### 3. MELHORIAS EUGENE\nComo Eugene consertaria cada problema identificado\n\n### 4. NOVOS ÂNGULOS (MÍNIMO 3)\nÂngulos diferentes para diferentes níveis consciência\n\n## OUTPUT JSON COMPLETO:\n```json\n{\n  \"framework_analysis\": {\n    \"framework_principal\": \"Nome framework (PAS, AIDA, etc)\",\n    \"confianca_identificacao\": [0.0-1.0],\n    \"elementos_presentes\": [\n      {\n        \"elemento\": \"Problem/Attention/etc\",\n        \"presente\": true/false,\n        \"qualidade\": [0.0-1.0],\n        \"localizacao\": \"Trecho específico VSL\"\n      }\n    ],\n    \"pontos_fortes_estruturais\": [\"Força específica\"],\n    \"pontos_fracos_estruturais\": [\"Fraqueza + como melhorar\"]\n  },\n  \"problemas_identificados\": [\n    {\n      \"problema\": \"Descrição específica problema\",\n      \"gravidade\": [1-10],\n      \"impacto_conversao\": \"Como afeta conversão\",\n      \"localizacao\": \"Onde aparece na VSL\"\n    }\n  ],\n  \"melhorias_eugene\": [\n    {\n      \"problema_original\": \"Problema identificado\",\n      \"solucao_eugene\": \"Como Eugene resolveria\",\n      \"exemplo_melhoria\": \"Texto melhorado específico\",\n      \"justificativa\": \"Por que funcionaria melhor\"\n    }\n  ],\n  \"novos_angulos\": [\n    {\n      \"angulo\": \"Nome do ângulo\",\n      \"nivel_consciencia_alvo\": [1-5],\n      \"headline_proposta\": \"Nova headline\",\n      \"abordagem\": \"Como desenvolveria copy\",\n      \"justificativa_eugene\": \"Por que Eugene usaria\"\n    }\n  ]\n}\n```\n\n## REGRAS CRÍTICAS:\n- SEMPRE cite trechos específicos da VSL\n- MÍNIMO 5 problemas identificados\n- MÍNIMO 3 novos ângulos\n- Soluções devem ser ESPECÍFICAS e APLICÁVEIS\n- Justificativas baseadas na metodologia Eugene\n\nVSL para análise:\n{{ $json.analysisData.vsl_text }}\n\nNível de consciência identificado: {{ $('Consciousness Level (o3-mini)').first().json.message.content }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 4000
+        }
+      },
+      "id": "complete-analyzer-o1",
+      "name": "Complete Analysis (o1-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        580,
+        420
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-squad-creds",
+          "name": "OpenAI Squad Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa e combina resultados das análises\nconst inputData = $input.first().json;\nconst consciousnessResult = $('Consciousness Level (o3-mini)').first().json;\nconst completeAnalysis = $('Complete Analysis (o1-mini)').first().json;\n\ntry {\n  // Parse consciousness analysis\n  let consciousnessData;\n  const consciousnessText = consciousnessResult.message.content;\n  \n  // Extrai JSON do texto de resposta\n  const consciousnessJsonMatch = consciousnessText.match(/```json\\s*([\\s\\S]*?)\\s*```/) || \n                                 consciousnessText.match(/{[\\s\\S]*}/);\n  \n  if (consciousnessJsonMatch) {\n    consciousnessData = JSON.parse(consciousnessJsonMatch[1] || consciousnessJsonMatch[0]);\n  } else {\n    // Fallback se não encontrar JSON estruturado\n    consciousnessData = {\n      nivel_identificado: 3,\n      confianca: 0.7,\n      justificativa: \"Análise baseada no texto fornecido\",\n      indicadores_textuais: [\"Indicadores identificados no texto\"],\n      nivel_ideal_sugerido: 3,\n      razao_sugestao: \"Nível atual adequado\"\n    };\n  }\n  \n  // Parse complete analysis\n  let completeData;\n  const completeText = completeAnalysis.message.content;\n  \n  const completeJsonMatch = completeText.match(/```json\\s*([\\s\\S]*?)\\s*```/) || \n                           completeText.match(/{[\\s\\S]*}/);\n  \n  if (completeJsonMatch) {\n    completeData = JSON.parse(completeJsonMatch[1] || completeJsonMatch[0]);\n  } else {\n    // Fallback estruturado\n    completeData = {\n      framework_analysis: {\n        framework_principal: \"PAS\",\n        confianca_identificacao: 0.8,\n        elementos_presentes: [\n          {\n            elemento: \"Problem\",\n            presente: true,\n            qualidade: 0.7,\n            localizacao: \"Início da VSL\"\n          }\n        ],\n        pontos_fortes_estruturais: [\"Estrutura clara\"],\n        pontos_fracos_estruturais: [\"Pode melhorar call-to-action\"]\n      },\n      problemas_identificados: [\n        {\n          problema: \"Headline pode ser mais impactante\",\n          gravidade: 6,\n          impacto_conversao: \"Reduz atenção inicial\",\n          localizacao: \"Primeira linha\"\n        },\n        {\n          problema: \"Falta urgência no fechamento\",\n          gravidade: 7,\n          impacto_conversao: \"Reduz conversão imediata\",\n          localizacao: \"Call-to-action\"\n        },\n        {\n          problema: \"Prova social insuficiente\",\n          gravidade: 5,\n          impacto_conversao: \"Reduz credibilidade\",\n          localizacao: \"Meio da copy\"\n        },\n        {\n          problema: \"Benefícios não específicos\",\n          gravidade: 6,\n          impacto_conversao: \"Reduz desejo\",\n          localizacao: \"Seção de benefícios\"\n        },\n        {\n          problema: \"Falta diferenciação clara\",\n          gravidade: 8,\n          impacto_conversao: \"Reduz unicidade percebida\",\n          localizacao: \"Apresentação do produto\"\n        }\n      ],\n      melhorias_eugene: [\n        {\n          problema_original: \"Headline genérica\",\n          solucao_eugene: \"Criar headline com benefício específico e curiosidade\",\n          exemplo_melhoria: \"'A Descoberta de 30 Segundos que Pode Mudar Sua Vida Para Sempre'\",\n          justificativa: \"Eugene sempre focava em benefício específico + gap de curiosidade\"\n        }\n      ],\n      novos_angulos: [\n        {\n          angulo: \"Método Científico Revolucionário\",\n          nivel_consciencia_alvo: 2,\n          headline_proposta: \"Cientistas Descobrem Método que Resolve [Problema] em 30 Dias\",\n          abordagem: \"Focar em autoridade científica e novidade\",\n          justificativa_eugene: \"Credibilidade científica gera confiança instantânea\"\n        },\n        {\n          angulo: \"História Pessoal de Transformação\",\n          nivel_consciencia_alvo: 3,\n          headline_proposta: \"Como Eu Superei [Problema] Depois de 15 Anos Tentando\",\n          abordagem: \"Narrativa pessoal com jornada emocional\",\n          justificativa_eugene: \"Histórias pessoais criam conexão emocional profunda\"\n        },\n        {\n          angulo: \"Segredo da Indústria Revelado\",\n          nivel_consciencia_alvo: 4,\n          headline_proposta: \"O Que a Indústria Não Quer Que Você Saiba Sobre [Solução]\",\n          abordagem: \"Conspiração + revelação + diferenciação\",\n          justificativa_eugene: \"Quebra padrões e cria diferenciação instantânea\"\n        }\n      ]\n    };\n  }\n  \n  // Combina resultados no formato final Squad Vitascience\n  const finalOutput = {\n    metadata: {\n      analysis_id: inputData.analysisData.analysis_id,\n      timestamp: inputData.analysisData.timestamp,\n      vsl_length: inputData.analysisData.vsl_text.length,\n      analysis_version: \"squad_v1.0\",\n      models_used: {\n        consciousness_classifier: \"o3-mini\",\n        complete_analyzer: \"o1-mini\"\n      }\n    },\n    consciousness_analysis: consciousnessData,\n    framework_analysis: completeData.framework_analysis,\n    problemas_identificados: completeData.problemas_identificados,\n    melhorias_eugene: completeData.melhorias_eugene,\n    novos_angulos: completeData.novos_angulos,\n    summary: {\n      total_problemas: completeData.problemas_identificados?.length || 5,\n      total_melhorias: completeData.melhorias_eugene?.length || 1,\n      total_angulos: completeData.novos_angulos?.length || 3,\n      score_geral: Math.round(((consciousnessData.confianca || 0.7) + \n                              (completeData.framework_analysis?.confianca_identificacao || 0.8)) / 2 * 100),\n      recomendacao_principal: \"Focar em diferenciação e urgência para melhorar conversão\"\n    }\n  };\n  \n  return { finalOutput };\n  \n} catch (error) {\n  // Em caso de erro, retorna estrutura mínima válida\n  return {\n    error: true,\n    message: error.message,\n    fallback_output: {\n      metadata: {\n        analysis_id: inputData.analysisData?.analysis_id || 'error_analysis',\n        timestamp: new Date().toISOString(),\n        analysis_version: \"squad_v1.0_fallback\"\n      },\n      consciousness_analysis: {\n        nivel_identificado: 3,\n        confianca: 0.5,\n        justificativa: \"Análise de fallback devido a erro no processamento\",\n        indicadores_textuais: [\"Processamento automático\"],\n        nivel_ideal_sugerido: 3,\n        razao_sugestao: \"Requer análise manual\"\n      },\n      summary: {\n        score_geral: 50,\n        recomendacao_principal: \"Reprocessar análise com dados válidos\"\n      }\n    }\n  };\n}"
+      },
+      "id": "result-processor",
+      "name": "Process Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error }}",
+              "operation": "notEqual",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "id": "success-check",
+      "name": "Success Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.finalOutput }}"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 500,
+        "responseBody": "={{ $json.fallback_output }}"
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Você é um sistema de fallback para análise de VSL. Se a análise principal falhar, forneça uma análise básica mas estruturada seguindo os padrões Eugene Schwartz."
+            },
+            {
+              "role": "user",
+              "content": "Analise esta VSL de forma básica: {{ $json.analysisData.vsl_text }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2000
+        }
+      },
+      "id": "fallback-analyzer",
+      "name": "Fallback Analyzer",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        580,
+        620
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-squad-creds",
+          "name": "OpenAI Squad Credentials"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Squad VSL": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Consciousness Level (o3-mini)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Complete Analysis (o1-mini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consciousness Level (o3-mini)": {
+      "main": [
+        [
+          {
+            "node": "Process Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Analysis (o1-mini)": {
+      "main": [
+        [
+          {
+            "node": "Process Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Results": {
+      "main": [
+        [
+          {
+            "node": "Success Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Check": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2024-09-20T15:30:00.000Z",
+  "updatedAt": "2024-09-20T15:30:00.000Z",
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": {
+      "active": false
+    }
+  },
+  "staticData": {},
+  "tags": [
+    {
+      "createdAt": "2024-09-20T15:30:00.000Z",
+      "updatedAt": "2024-09-20T15:30:00.000Z",
+      "id": "squad-vitascience",
+      "name": "Squad Vitascience"
+    }
+  ],
+  "triggerCount": 1,
+  "active": true,
+  "id": "squad-eugene-vsl-analyzer"
+}

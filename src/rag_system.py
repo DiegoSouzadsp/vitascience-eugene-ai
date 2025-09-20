@@ -15,13 +15,16 @@ import time
 
 import fitz  # PyMuPDF for PDF processing
 import numpy as np
-import openai
-from sqlalchemy import create_engine, text, Column, Integer, String, Text, Float
+from openai import OpenAI
+from sqlalchemy import create_engine, text, Column, Integer, String, Text, Float, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
 from pgvector.sqlalchemy import Vector
-from sentence_transformers import SentenceTransformer
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+import uvicorn
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,10 +40,17 @@ class EugeneKnowledge(Base):
     id = Column(Integer, primary_key=True)
     content = Column(Text, nullable=False)
     embedding = Column(Vector(3072))  # text-embedding-3-large dimensions
-    category = Column(String(50))
-    chapter = Column(String(100))
+    category = Column(String(50), index=True)
+    chapter = Column(String(100), index=True)
     confidence_score = Column(Float)
     metadata = Column(JSONB)
+    created_at = Column(Text)  # ISO timestamp
+
+    # Add vector similarity index for performance
+    __table_args__ = (
+        Index('ix_eugene_knowledge_embedding_cosine', 'embedding', postgresql_using='ivfflat', postgresql_ops={'embedding': 'vector_cosine_ops'}),
+        Index('ix_eugene_knowledge_category_embedding', 'category', 'embedding'),
+    )
 
 @dataclass
 class DocumentChunk:
@@ -70,9 +80,8 @@ class EugeneRAGSystem:
         self.database_url = database_url or os.getenv('DATABASE_URL')
         self.openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
 
-        # Configure OpenAI
-        if self.openai_api_key:
-            openai.api_key = self.openai_api_key
+        # Configure OpenAI client
+        self.openai_client = OpenAI(api_key=self.openai_api_key) if self.openai_api_key else None
 
         # Database setup
         self.engine = None
@@ -263,31 +272,37 @@ class EugeneRAGSystem:
         logger.info(f"Created {len(chunks)} semantic chunks for chapter: {chapter}")
         return chunks
 
-    async def generate_embedding(self, text: str) -> Optional[List[float]]:
+    def generate_embedding(self, text: str) -> Optional[List[float]]:
         """
         Gera embedding usando OpenAI text-embedding-3-large
         """
         try:
-            response = await openai.Embedding.acreate(
+            if not self.openai_client:
+                logger.error("OpenAI client not configured")
+                return None
+
+            response = self.openai_client.embeddings.create(
                 model=self.embedding_model,
                 input=text
             )
-            return response['data'][0]['embedding']
+            return response.data[0].embedding
 
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return None
 
-    async def store_chunks(self, chunks: List[DocumentChunk]) -> bool:
+    def store_chunks(self, chunks: List[DocumentChunk]) -> bool:
         """
         Armazena chunks no banco de dados com embeddings
         """
         try:
             session = self.Session()
+            import datetime
+            timestamp = datetime.datetime.now().isoformat()
 
             for chunk in chunks:
                 # Generate embedding
-                embedding = await self.generate_embedding(chunk.content)
+                embedding = self.generate_embedding(chunk.content)
                 if not embedding:
                     continue
 
@@ -298,7 +313,8 @@ class EugeneRAGSystem:
                     category=chunk.category,
                     chapter=chunk.chapter,
                     confidence_score=chunk.confidence_score,
-                    metadata=chunk.metadata
+                    metadata=chunk.metadata,
+                    created_at=timestamp
                 )
 
                 session.add(knowledge)

@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
-from rag_system import EugeneRAGSystem, RetrievalResult
+from src.rag_system import EugeneRAGSystem, RetrievalResult
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

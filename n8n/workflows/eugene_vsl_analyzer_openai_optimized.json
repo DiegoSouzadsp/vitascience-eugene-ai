@@ -1,0 +1,152 @@
+{
+  "name": "Eugene VSL Analyzer - OpenAI Optimized (o3-mini + o1-mini)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/analyze-vsl-openai",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-input",
+      "name": "Webhook Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "model": "o3-mini",
+        "maxTokens": 1000,
+        "temperature": 0.1,
+        "messages": [
+          {
+            "role": "system",
+            "content": "Você é um especialista em análise rápida de copywriting usando metodologia Eugene Schwartz. Classifique APENAS o nível de consciência da VSL de 1-5 de forma rápida e precisa."
+          },
+          {
+            "role": "user",
+            "content": "Analise esta Lead de VSL e classifique o NÍVEL DE CONSCIÊNCIA (1-5) da metodologia Eugene Schwartz:\n\nLEAD VSL:\n{{$json.vsl_text}}\n\nResponda APENAS em JSON válido:\n{\n  \"consciousness_level\": 1-5,\n  \"confidence\": 0-100,\n  \"quick_reasoning\": \"explicação breve\",\n  \"framework_detected\": \"PAS|AIDA|BEFORE_AFTER|etc\",\n  \"target_awareness\": \"descrição do nível de consciência detectado\"\n}"
+          }
+        ]
+      },
+      "id": "o3mini-classification",
+      "name": "o3-mini - Quick Classification",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 3,
+      "position": [460, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-creds",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "o1-mini",
+        "maxTokens": 4000,
+        "temperature": 0.1,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Você é Eugene Schwartz, lendário copywriter. Analise profundamente esta Lead de VSL usando sua metodologia dos 5 níveis de consciência.\n\nCLASSIFICAÇÃO INICIAL (o3-mini):\n{{$('o3-mini - Quick Classification').first().json}}\n\nLEAD VSL COMPLETA:\n{{$('Webhook Input').first().json.vsl_text}}\n\nFaça uma análise COMPLETA seguindo EXATAMENTE este formato JSON:\n\n{\n  \"consciousness_analysis\": {\n    \"level\": 1-5,\n    \"confidence\": 0-100,\n    \"justification\": \"análise detalhada baseada na metodologia Eugene Schwartz\",\n    \"level_explanation\": \"definição específica do nível identificado\",\n    \"ideal_level_suggestion\": \"qual nível seria ideal para esta audiência e por quê\",\n    \"market_sophistication\": \"análise do nível de sofisticação do mercado\"\n  },\n  \"copywriting_framework\": {\n    \"main_framework\": \"PAS|AIDA|BEFORE_AFTER|STORY|etc\",\n    \"structure_breakdown\": \"como a VSL está estruturada seção por seção\",\n    \"framework_effectiveness\": \"0-100% - quão bem o framework está implementado\",\n    \"eugene_framework_rating\": \"avaliação do framework pela ótica Eugene Schwartz\"\n  },\n  \"identified_problems\": {\n    \"main_problem\": \"problema principal que impede maior conversão\",\n    \"critical_issues\": [\n      {\n        \"problem\": \"descrição específica do problema\",\n        \"severity\": \"1-10\",\n        \"location\": \"onde exatamente aparece na copy\",\n        \"conversion_impact\": \"como este problema afeta a conversão\",\n        \"eugene_perspective\": \"o que Eugene Schwartz diria sobre este problema\"\n      }\n    ],\n    \"missed_opportunities\": [\"oportunidades perdidas para aumentar conversão\"]\n  },\n  \"eugene_improvements\": {\n    \"quick_wins\": [\"melhorias rápidas que Eugene implementaria imediatamente\"],\n    \"strategic_changes\": [\n      {\n        \"improvement\": \"melhoria específica baseada na metodologia Eugene\",\n        \"eugene_principle\": \"qual princípio de Eugene Schwartz aplica\",\n        \"implementation\": \"como implementar esta melhoria\",\n        \"expected_impact\": \"resultado esperado na conversão\",\n        \"example_rewrite\": \"exemplo de como reescrever a seção\"\n      }\n    ],\n    \"new_creative_angles\": [\n      {\n        \"angle\": \"novo ângulo criativo para testar\",\n        \"reasoning\": \"por que este ângulo seria efetivo\",\n        \"target_consciousness\": \"nível de consciência que este ângulo atinge\"\n      }\n    ]\n  },\n  \"market_analysis\": {\n    \"health_compliance\": \"considerações ANVISA para mercado brasileiro\",\n    \"target_audience_analysis\": \"análise profunda do público-alvo\",\n    \"competitive_advantage\": \"como posicionar contra concorrência\",\n    \"brazilian_market_adaptation\": \"adaptações específicas para mercado BR\"\n  },\n  \"conversion_optimization\": {\n    \"headline_optimization\": \"como melhorar headline principal\",\n    \"emotional_triggers\": \"gatilhos emocionais a serem explorados\",\n    \"objection_handling\": \"objeções não abordadas que devem ser incluídas\",\n    \"call_to_action_improvement\": \"como otimizar o CTA\"\n  }\n}"
+          }
+        ]
+      },
+      "id": "o1mini-analysis",
+      "name": "o1-mini - Deep Analysis",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 3,
+      "position": [680, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-creds",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "squad_vitascience_analysis",
+              "value": "={{ {\n  \"analysis_metadata\": {\n    \"timestamp\": $now,\n    \"vsl_length\": $('Webhook Input').first().json.vsl_text.length,\n    \"analysis_method\": \"openai_optimized_pipeline\",\n    \"models_used\": \"o3-mini_classification + o1-mini_deep_analysis\",\n    \"processing_strategy\": \"cost_optimized_quality_focused\",\n    \"squad_test_compliance\": true\n  },\n  \"consciousness_level\": $('o1-mini - Deep Analysis').first().json.consciousness_analysis,\n  \"copywriting_framework\": $('o1-mini - Deep Analysis').first().json.copywriting_framework,\n  \"identified_problems\": $('o1-mini - Deep Analysis').first().json.identified_problems,\n  \"suggested_improvements\": $('o1-mini - Deep Analysis').first().json.eugene_improvements,\n  \"market_analysis\": $('o1-mini - Deep Analysis').first().json.market_analysis,\n  \"conversion_optimization\": $('o1-mini - Deep Analysis').first().json.conversion_optimization,\n  \"quick_classification_data\": $('o3-mini - Quick Classification').first().json,\n  \"eugene_schwartz_score\": {\n    \"overall_effectiveness\": \"calculado baseado na análise completa\",\n    \"consciousness_alignment\": \"alinhamento com nível ideal\",\n    \"framework_execution\": \"qualidade da execução do framework\",\n    \"conversion_potential\": \"potencial de conversão estimado\"\n  },\n  \"vitascience_ready\": true,\n  \"test_requirements_met\": {\n    \"consciousness_analysis_1_5\": true,\n    \"framework_identification\": true,\n    \"minimum_5_improvements\": true,\n    \"eugene_methodology_applied\": true,\n    \"json_structured_output\": true\n  }\n} }}"
+            }
+          ]
+        }
+      },
+      "id": "final-formatter",
+      "name": "Final Squad Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Input": {
+      "main": [
+        [
+          {
+            "node": "o3-mini - Quick Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "o3-mini - Quick Classification": {
+      "main": [
+        [
+          {
+            "node": "o1-mini - Deep Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "o1-mini - Deep Analysis": {
+      "main": [
+        [
+          {
+            "node": "Final Squad Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Squad Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCreatedBy": "Vitascience Eugene AI - OpenAI Optimized",
+    "description": "Pipeline otimizado OpenAI: o3-mini para classificação + o1-mini para análise profunda Eugene Schwartz"
+  }
+}

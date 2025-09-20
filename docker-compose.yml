@@ -25,10 +25,11 @@ services:
   rag-api:
     build:
       context: .
-      dockerfile: ./docker/rag-api.Dockerfile
+      dockerfile: ./docker/Dockerfile.rag-api
     container_name: eugene_rag_api
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres-vector:5432/eugene_rag
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     ports:
       - "8000:8000"
@@ -37,14 +38,46 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - ./docs:/app/docs
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n
+    container_name: eugene_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_LOG_LEVEL=info
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/workflows:/home/node/.n8n/workflows
+    depends_on:
+      rag-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: eugene_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  n8n_data:
+  redis_data:
 
 networks:
   default:

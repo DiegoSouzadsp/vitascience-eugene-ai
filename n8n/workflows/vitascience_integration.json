@@ -1,0 +1,255 @@
+{
+  "name": "Vitascience Integration - Eugene Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/vitascience/analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-vitascience-input",
+      "name": "Vitascience Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "vitascience-eugene-analysis"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "validation-api-key",
+              "leftValue": "={{ $json.api_key }}",
+              "rightValue": "vitascience_eugene_2024",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "validation-vsl-text",
+              "leftValue": "={{ $json.vsl_text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validation-node",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://rag-api:8000/analyze/complete",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $json.vsl_text,\n  \"analysis_type\": \"complete\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "complete-analysis",
+      "name": "Complete Eugene Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "vitascience_report",
+              "value": "={{ {\n  \"client_id\": $('Vitascience Webhook').first().json.client_id,\n  \"analysis_id\": $('Vitascience Webhook').first().json.analysis_id || $runIndex,\n  \"timestamp\": $now,\n  \"vsl_metadata\": {\n    \"length_characters\": $('Vitascience Webhook').first().json.vsl_text.length,\n    \"length_words\": $('Vitascience Webhook').first().json.vsl_text.split(' ').length,\n    \"product_category\": $('Vitascience Webhook').first().json.product_category || \"health_supplement\"\n  },\n  \"eugene_analysis\": $('Complete Eugene Analysis').first().json,\n  \"business_insights\": {\n    \"conversion_potential\": $('Complete Eugene Analysis').first().json.problems.score_geral_copy >= 7 ? \"Alto\" : $('Complete Eugene Analysis').first().json.problems.score_geral_copy >= 5 ? \"Médio\" : \"Baixo\",\n    \"priority_fixes\": $('Complete Eugene Analysis').first().json.improvements.melhorias_quick_wins.slice(0, 3),\n    \"investment_recommendation\": $('Complete Eugene Analysis').first().json.problems.score_geral_copy < 6 ? \"Reescrita completa recomendada\" : \"Otimizações pontuais suficientes\",\n    \"target_audience_alignment\": $('Complete Eugene Analysis').first().json.consciousness.nivel_identificado === $('Complete Eugene Analysis').first().json.consciousness.nivel_ideal_sugerido ? \"Alinhado\" : \"Desalinhado\"\n  }\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-vitascience-output",
+      "name": "Format for Vitascience",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Relatório de Análise VSL - Vitascience\n\n## Informações do Cliente\n- **ID do Cliente:** {{ $json.vitascience_report.client_id }}\n- **ID da Análise:** {{ $json.vitascience_report.analysis_id }}\n- **Data/Hora:** {{ new Date($json.vitascience_report.timestamp).toLocaleString('pt-BR') }}\n\n## Métricas da VSL\n- **Caracteres:** {{ $json.vitascience_report.vsl_metadata.length_characters.toLocaleString() }}\n- **Palavras:** {{ $json.vitascience_report.vsl_metadata.length_words.toLocaleString() }}\n- **Categoria:** {{ $json.vitascience_report.vsl_metadata.product_category }}\n\n## Análise Eugene Schwartz\n\n### 📊 Score Geral: {{ $json.vitascience_report.eugene_analysis.problems.score_geral_copy }}/10\n\n### 🎯 Nível de Consciência\n- **Identificado:** Nível {{ $json.vitascience_report.eugene_analysis.consciousness.nivel_identificado }}\n- **Confiança:** {{ Math.round($json.vitascience_report.eugene_analysis.consciousness.confianca * 100) }}%\n- **Recomendado:** Nível {{ $json.vitascience_report.eugene_analysis.consciousness.nivel_ideal_sugerido }}\n\n### 🏗️ Framework Estrutural\n- **Principal:** {{ $json.vitascience_report.eugene_analysis.framework.framework_principal }}\n- **Confiança:** {{ Math.round($json.vitascience_report.eugene_analysis.framework.confianca_identificacao * 100) }}%\n\n### ⚠️ Problemas Críticos ({{ $json.vitascience_report.eugene_analysis.problems.problemas_identificados.length }})\n{{ $json.vitascience_report.eugene_analysis.problems.problemas_identificados.slice(0, 5).map((prob, i) => `${i+1}. **${prob.problema}** (Severidade: ${prob.severidade}/10)`).join('\\n') }}\n\n### 🚀 Quick Wins Prioritários\n{{ $json.vitascience_report.business_insights.priority_fixes.map((fix, i) => `${i+1}. ${fix}`).join('\\n') }}\n\n## Insights de Negócio\n\n### 💰 Potencial de Conversão: {{ $json.vitascience_report.business_insights.conversion_potential }}\n\n### 📈 Recomendação de Investimento\n{{ $json.vitascience_report.business_insights.investment_recommendation }}\n\n### 🎯 Alinhamento com Público\n**Status:** {{ $json.vitascience_report.business_insights.target_audience_alignment }}\n\n{{ $json.vitascience_report.business_insights.target_audience_alignment === 'Desalinhado' ? `\n⚠️ **Atenção:** A VSL está direcionada para o nível ${$json.vitascience_report.eugene_analysis.consciousness.nivel_identificado} mas deveria focar no nível ${$json.vitascience_report.eugene_analysis.consciousness.nivel_ideal_sugerido}.\n\n**Razão:** ${$json.vitascience_report.eugene_analysis.consciousness.razao_sugestao}\n` : '\n✅ **Excelente:** A VSL está bem alinhada com o nível de consciência do público-alvo.' }}\n\n## Próximos Passos Recomendados\n\n1. **Implementar Quick Wins** (1-2 dias)\n   - Mudanças rápidas com alto impacto\n   - ROI imediato esperado\n\n2. **Correções de Problemas Críticos** (1 semana)\n   - Focar nos problemas de severidade 8+\n   - Testar individualmente\n\n3. **Otimização Completa** (2-3 semanas)\n   - Implementar todas as melhorias sugeridas\n   - A/B testing estruturado\n\n## ROI Estimado\n\n{{ $json.vitascience_report.eugene_analysis.problems.score_geral_copy < 5 ? `\n**Cenário Conservador:** +50-100% na conversão\n**Cenário Otimista:** +150-300% na conversão\n\n*Baseado na implementação completa das melhorias sugeridas*\n` : $json.vitascience_report.eugene_analysis.problems.score_geral_copy < 7 ? `\n**Cenário Conservador:** +20-40% na conversão\n**Cenário Otimista:** +50-100% na conversão\n\n*Baseado na implementação das melhorias prioritárias*\n` : `\n**Cenário Conservador:** +10-25% na conversão\n**Cenário Otimista:** +30-50% na conversão\n\n*VSL já está bem estruturada, otimizações pontuais*\n` }}\n\n---\n\n*Análise realizada com IA especializada na metodologia Eugene Schwartz*\n\n**Vitascience Eugene AI** | Copywriting Científico para Saúde",
+        "options": {}
+      },
+      "id": "generate-vitascience-report",
+      "name": "Generate Vitascience Report",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "generic",
+        "requestMethod": "POST",
+        "url": "={{ $('Vitascience Webhook').first().json.callback_url || 'https://vitascience.com/api/eugene-analysis/callback' }}",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"status\": \"completed\",\n  \"client_id\": $('Vitascience Webhook').first().json.client_id,\n  \"analysis_id\": $('Format for Vitascience').first().json.vitascience_report.analysis_id,\n  \"results\": $('Format for Vitascience').first().json.vitascience_report,\n  \"report_html\": $('Generate Vitascience Report').first().json,\n  \"api_version\": \"v1.0\",\n  \"processing_time_ms\": $('Complete Eugene Analysis').first().json.total_analysis_time_ms\n} }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "vitascience-callback",
+      "name": "Vitascience Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": true,\n  \"message\": \"Análise Eugene Schwartz completada com sucesso\",\n  \"analysis_id\": $('Format for Vitascience').first().json.vitascience_report.analysis_id,\n  \"score_geral\": $('Format for Vitascience').first().json.vitascience_report.eugene_analysis.problems.score_geral_copy,\n  \"nivel_consciencia\": $('Format for Vitascience').first().json.vitascience_report.eugene_analysis.consciousness.nivel_identificado,\n  \"problemas_criticos\": $('Format for Vitascience').first().json.vitascience_report.eugene_analysis.problems.problemas_identificados.length,\n  \"quick_wins\": $('Format for Vitascience').first().json.vitascience_report.business_insights.priority_fixes.length,\n  \"conversion_potential\": $('Format for Vitascience').first().json.vitascience_report.business_insights.conversion_potential,\n  \"processing_time_ms\": $('Complete Eugene Analysis').first().json.total_analysis_time_ms\n} }}",
+        "options": {}
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": false,\n  \"error\": \"Dados de entrada inválidos\",\n  \"message\": \"Verifique se api_key e vsl_text foram fornecidos corretamente\",\n  \"required_fields\": [\"api_key\", \"vsl_text\"],\n  \"optional_fields\": [\"client_id\", \"analysis_id\", \"product_category\", \"callback_url\"]\n} }}",
+        "options": {}
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        680,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Vitascience Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Complete Eugene Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Eugene Analysis": {
+      "main": [
+        [
+          {
+            "node": "Format for Vitascience",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Vitascience": {
+      "main": [
+        [
+          {
+            "node": "Generate Vitascience Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Vitascience Report": {
+      "main": [
+        [
+          {
+            "node": "Vitascience Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "vitascience-integration-v1.0",
+  "meta": {
+    "templateCreatedBy": "Vitascience Eugene AI",
+    "description": "Integration workflow for Vitascience platform with Eugene Schwartz analysis",
+    "tags": ["vitascience", "eugene-schwartz", "integration", "business"]
+  },
+  "id": "vitascience-eugene-integration",
+  "tags": [
+    {
+      "createdAt": "2024-09-20T09:00:00.000Z",
+      "updatedAt": "2024-09-20T09:00:00.000Z",
+      "id": "vitascience-integration",
+      "name": "Vitascience Integration"
+    }
+  ]
+}

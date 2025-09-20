@@ -1,0 +1,80 @@
+{
+  "name": "VSL Test Webhook - Eugene Schwartz",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "test-eugene",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-input",
+      "name": "Webhook Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "analysis_result",
+              "value": "={{ {\n  \"status\": \"success\",\n  \"timestamp\": $now,\n  \"vsl_received\": true,\n  \"vsl_length\": $json.vsl_text ? $json.vsl_text.length : 0,\n  \"consciousness_level\": \"Nível 3 - Aware\",\n  \"framework_detected\": \"Problem-Agitation-Solution (PAS)\",\n  \"problems_identified\": [\n    \"Falta de autoridade científica inicial\",\n    \"Muito foco em descoberta histórica vs. benefícios atuais\",\n    \"Falta de prova social específica\",\n    \"Não aborda objeções comuns\"\n  ],\n  \"improvements_suggested\": [\n    \"Adicionar mais autoridade científica atual\",\n    \"Incluir testemunhos específicos com resultados\",\n    \"Criar senso de urgência\",\n    \"Abordar objeções sobre segurança\"\n  ],\n  \"test_mode\": true,\n  \"eugene_analysis\": \"VSL demonstra consciência de problema (nível 3), usa framework PAS clássico, mas pode melhorar autoridade e prova social\"\n} }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mock-analysis",
+      "name": "Mock Eugene Analysis",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Input": {
+      "main": [
+        [
+          {
+            "node": "Mock Eugene Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Eugene Analysis": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "vsl-test-webhook",
+  "meta": {
+    "templateCreatedBy": "Vitascience Eugene AI Test",
+    "description": "Workflow de teste para VSL analysis com mock da metodologia Eugene Schwartz"
+  }
+}

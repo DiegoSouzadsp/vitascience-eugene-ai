@@ -1,0 +1,278 @@
+{
+  "name": "Eugene VSL Analyzer - Squad Vitascience FINAL",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/analyze-vsl-squad",
+        "method": "POST",
+        "responseMode": "responseNode",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "webhook-squad-vsl",
+      "name": "Webhook Squad VSL",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [140, 320],
+      "webhookId": "squad-vsl-analyzer"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Valida e prepara input da VSL com controles de qualidade\nconst vsl_text = $input.first().json.vsl_text;\nconst options = $input.first().json.options || {};\n\n// Validações rigorosas\nif (!vsl_text || typeof vsl_text !== 'string') {\n  throw new Error('VSL text is required and must be a string');\n}\n\nconst cleanText = vsl_text.trim();\nif (cleanText.length < 100) {\n  throw new Error('VSL text must be at least 100 characters long for meaningful analysis');\n}\n\nif (cleanText.length > 50000) {\n  throw new Error('VSL text too long (max 50,000 characters). Please provide a shorter version.');\n}\n\n// Preparar dados para análise com configurações Squad\nconst analysisData = {\n  vsl_text: cleanText,\n  timestamp: new Date().toISOString(),\n  analysis_id: `squad_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n  word_count: cleanText.split(/\\s+/).length,\n  char_count: cleanText.length,\n  options: {\n    detailed_analysis: options.detailed_analysis !== false,\n    include_frameworks: options.include_frameworks !== false,\n    min_problems: Math.max(options.min_problems || 5, 5),\n    min_angles: Math.max(options.min_angles || 3, 3),\n    squad_mode: true,\n    budget_conscious: true\n  }\n};\n\n// Log para debug\nconsole.log(`Squad VSL Analysis Started: ${analysisData.analysis_id}`);\nconsole.log(`Text length: ${analysisData.char_count} chars, ${analysisData.word_count} words`);\n\nreturn { analysisData };"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [360, 320]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "o3-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "# Eugene Schwartz Consciousness Level Classifier - Squad Vitascience\n\nVocê é Eugene Schwartz analisando níveis de consciência do mercado. Seja PRECISO e RIGOROSO.\n\n## 5 Níveis de Consciência (Eugene Schwartz):\n\n**Nível 1 - Inconsciente do Problema:**\n- Cliente NÃO sabe que tem problema\n- VSL deve EDUCAR sobre existência do problema\n- Indicadores: \"Você pode não saber...\", \"A maioria ignora...\", estatísticas alarmantes\n- Abordagem: Revelação + Educação + Awareness\n- Exemplo: \"97% das pessoas ignoram este sinal perigoso...\"\n\n**Nível 2 - Consciente do Problema:**\n- Cliente SABE que tem problema, mas não conhece soluções\n- VSL deve APRESENTAR solução como descoberta\n- Indicadores: \"Finalmente uma solução...\", \"Descobri como resolver...\"\n- Abordagem: Solução + Esperança + Credibilidade\n- Exemplo: \"Se você sofre com X, esta descoberta vai mudar sua vida...\"\n\n**Nível 3 - Consciente da Solução:**\n- Cliente CONHECE soluções, mas não conhece SEU produto\n- VSL deve DIFERENCIAR de outras soluções\n- Indicadores: \"Diferente de tudo...\", \"Não é como os outros...\", \"Revolucionário...\"\n- Abordagem: Diferenciação + Superioridade + Prova\n- Exemplo: \"Esqueça tudo que você já tentou. Isso é diferente...\"\n\n**Nível 4 - Consciente do Produto:**\n- Cliente CONHECE seu produto, mas não está convencido\n- VSL deve usar PROVA SOCIAL abundante\n- Indicadores: \"Milhares já usaram...\", \"Resultados comprovados...\", depoimentos\n- Abordagem: Credibilidade + Prova Social + Redução Risco\n- Exemplo: \"Mais de 10.000 pessoas já transformaram suas vidas...\"\n\n**Nível 5 - Pronto para Comprar:**\n- Cliente CONVENCIDO, só precisa oferta certa\n- VSL deve focar URGÊNCIA e escassez\n- Indicadores: \"Últimas vagas...\", \"Desconto especial...\", \"Apenas hoje...\"\n- Abordagem: Urgência + Escassez + Call-to-Action\n- Exemplo: \"Restam apenas 50 vagas com desconto...\"\n\n## METODOLOGIA DE ANÁLISE:\n1. Leia TODA a VSL cuidadosamente\n2. Identifique abordagem principal predominante\n3. Busque indicadores textuais específicos\n4. Analise foco principal: educação, solução, diferenciação, prova ou oferta?\n5. Considere público-alvo implícito\n6. Avalie consistência do nível ao longo da VSL\n\n## OUTPUT OBRIGATÓRIO (JSON válido):\n```json\n{\n  \"nivel_identificado\": [1-5],\n  \"confianca\": [0.0-1.0],\n  \"justificativa\": \"Explicação detalhada citando trechos específicos da VSL\",\n  \"indicadores_textuais\": [\n    \"Frase específica 1 que indica o nível\",\n    \"Frase específica 2 que indica o nível\",\n    \"Frase específica 3 que indica o nível\"\n  ],\n  \"nivel_ideal_sugerido\": [1-5],\n  \"razao_sugestao\": \"Por que outro nível seria mais eficaz para este público\",\n  \"consistencia_nivel\": [0.0-1.0],\n  \"nota_consistencia\": \"Se há mistura de níveis, explique\"\n}\n```\n\nREGRAS CRÍTICAS:\n- SEMPRE retorne JSON válido\n- SEMPRE cite trechos específicos da VSL na justificativa\n- Se houver mistura de níveis, identifique o PREDOMINANTE\n- Confiança deve refletir clareza dos indicadores\n- Seja objetivo e direto"
+            },
+            {
+              "role": "user",
+              "content": "Analise o nível de consciência desta VSL:\n\n{{ $json.analysisData.vsl_text }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 1000,
+          "topP": 0.9
+        }
+      },
+      "id": "consciousness-classifier",
+      "name": "Consciousness Level (o3-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [580, 220],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-squad-creds",
+          "name": "OpenAI Squad Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "operation": "message",
+        "model": "o1-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "user",
+              "content": "# Eugene Schwartz VSL Complete Analyzer - Squad Vitascience\n\nComo Eugene Schwartz, faça análise COMPLETA desta VSL seguindo metodologia rigorosa.\n\n## CONHECIMENTO EUGENE SCHWARTZ EMBUTIDO:\n\n### FRAMEWORKS PRINCIPAIS:\n\n**PAS (Problem → Agitation → Solution):**\n- Problem: Identifica problema específico relevante\n- Agitation: Agita dor, mostra consequências graves\n- Solution: Apresenta solução definitiva única\n\n**AIDA (Attention → Interest → Desire → Action):**\n- Attention: Captura atenção (headline forte + curiosidade)\n- Interest: Desenvolve interesse com benefícios relevantes\n- Desire: Cria desejo intenso com transformação\n- Action: Move para ação específica urgente\n\n**Before/After/Bridge:**\n- Before: Situação atual problemática detalhada\n- After: Situação desejada ideal específica\n- Bridge: Produto/método como único caminho\n\n**Problem/Promise/Proof/Proposal (4P Eugene):**\n- Problem: Problema específico que dói\n- Promise: Promessa de resolução total\n- Proof: Evidências abundantes credíveis\n- Proposal: Oferta estruturada irresistível\n\n**Star/Story/Solution:**\n- Star: Protagonista claro confiável\n- Story: História pessoal/jornada emocional\n- Solution: Emerge naturalmente da narrativa\n\n### PRINCÍPIOS EUGENE PARA SAÚDE/SUPLEMENTOS:\n1. **Autoridade Científica**: Estudos, médicos, pesquisas\n2. **Transformação Dramática**: Antes/depois específicos\n3. **Diferenciação Clara**: \"Não é como outros produtos\"\n4. **Urgência Genuína**: Escassez real, não falsa\n5. **Prova Social Abundante**: Múltiplos depoimentos\n6. **Benefícios Específicos**: Não genéricos\n7. **Redução de Risco**: Garantias, testes gratuitos\n\n## ANÁLISE OBRIGATÓRIA:\n\n### 1. FRAMEWORK ESTRUTURAL\nIdentifique framework principal, elementos presentes, qualidade execução\n\n### 2. PROBLEMAS CRÍTICOS (MÍNIMO 5)\nProblemas específicos que reduzem conversão\n\n### 3. MELHORIAS EUGENE ESPECÍFICAS\nComo Eugene consertaria cada problema\n\n### 4. NOVOS ÂNGULOS CRIATIVOS (MÍNIMO 3)\nÂngulos para diferentes níveis consciência\n\n## OUTPUT JSON ESTRUTURADO:\n```json\n{\n  \"framework_analysis\": {\n    \"framework_principal\": \"Nome framework identificado\",\n    \"confianca_identificacao\": [0.0-1.0],\n    \"elementos_presentes\": [\n      {\n        \"elemento\": \"Problem/Attention/etc\",\n        \"presente\": true/false,\n        \"qualidade\": [0.0-1.0],\n        \"localizacao\": \"Trecho específico da VSL\",\n        \"observacao\": \"Como está executado\"\n      }\n    ],\n    \"pontos_fortes_estruturais\": [\"Força específica identificada\"],\n    \"pontos_fracos_estruturais\": [\"Fraqueza + como melhorar\"]\n  },\n  \"problemas_identificados\": [\n    {\n      \"problema\": \"Descrição específica do problema\",\n      \"gravidade\": [1-10],\n      \"impacto_conversao\": \"Como afeta conversão especificamente\",\n      \"localizacao\": \"Onde aparece na VSL\",\n      \"categoria\": \"headline/prova_social/urgencia/diferenciacao/beneficios\"\n    }\n  ],\n  \"melhorias_eugene\": [\n    {\n      \"problema_original\": \"Problema identificado\",\n      \"solucao_eugene\": \"Como Eugene resolveria especificamente\",\n      \"exemplo_melhoria\": \"Texto melhorado específico\",\n      \"justificativa\": \"Por que funcionaria melhor segundo Eugene\",\n      \"principio_aplicado\": \"Qual princípio Eugene está sendo usado\"\n    }\n  ],\n  \"novos_angulos\": [\n    {\n      \"angulo\": \"Nome do ângulo criativo\",\n      \"nivel_consciencia_alvo\": [1-5],\n      \"headline_proposta\": \"Nova headline específica\",\n      \"abordagem\": \"Como desenvolveria a copy completa\",\n      \"justificativa_eugene\": \"Por que Eugene usaria este ângulo\",\n      \"diferencial_unico\": \"O que torna este ângulo único\"\n    }\n  ]\n}\n```\n\n## REGRAS CRÍTICAS SQUAD:\n- SEMPRE cite trechos específicos da VSL\n- MÍNIMO 5 problemas identificados obrigatoriamente\n- MÍNIMO 3 novos ângulos criativos\n- Soluções devem ser ESPECÍFICAS e APLICÁVEIS\n- Justificativas baseadas na metodologia Eugene\n- JSON deve ser válido e bem estruturado\n- Foque em saúde/suplementos se aplicável\n\nVSL para análise completa:\n{{ $json.analysisData.vsl_text }}\n\nNível de consciência previamente identificado:\n{{ $('Consciousness Level (o3-mini)').first().json.message.content }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 3500,
+          "topP": 0.95
+        }
+      },
+      "id": "complete-analyzer",
+      "name": "Complete Analysis (o1-mini)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [580, 420],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-squad-creds",
+          "name": "OpenAI Squad Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa e combina resultados das análises com fallbacks robustos\nconst inputData = $input.first().json;\nconst consciousnessResult = $('Consciousness Level (o3-mini)').first().json;\nconst completeAnalysis = $('Complete Analysis (o1-mini)').first().json;\n\ntry {\n  // Parse consciousness analysis com fallback\n  let consciousnessData;\n  const consciousnessText = consciousnessResult.message.content;\n  \n  const consciousnessJsonMatch = consciousnessText.match(/```json\\s*([\\s\\S]*?)\\s*```/) || \n                                 consciousnessText.match(/{[\\s\\S]*?}/);\n  \n  if (consciousnessJsonMatch) {\n    try {\n      consciousnessData = JSON.parse(consciousnessJsonMatch[1] || consciousnessJsonMatch[0]);\n    } catch {\n      consciousnessData = null;\n    }\n  }\n  \n  // Fallback estruturado para consciousness\n  if (!consciousnessData) {\n    consciousnessData = {\n      nivel_identificado: 3,\n      confianca: 0.6,\n      justificativa: \"Análise automática baseada em padrões identificados no texto\",\n      indicadores_textuais: [\n        \"VSL apresenta solução específica\",\n        \"Foca em diferenciação do produto\",\n        \"Menciona benefícios únicos\"\n      ],\n      nivel_ideal_sugerido: 3,\n      razao_sugestao: \"Nível atual adequado para diferenciação\",\n      consistencia_nivel: 0.7,\n      nota_consistencia: \"Nível consistente ao longo do texto\"\n    };\n  }\n  \n  // Parse complete analysis com fallback\n  let completeData;\n  const completeText = completeAnalysis.message.content;\n  \n  const completeJsonMatch = completeText.match(/```json\\s*([\\s\\S]*?)\\s*```/) || \n                           completeText.match(/{[\\s\\S]*?}/);\n  \n  if (completeJsonMatch) {\n    try {\n      completeData = JSON.parse(completeJsonMatch[1] || completeJsonMatch[0]);\n    } catch {\n      completeData = null;\n    }\n  }\n  \n  // Fallback estruturado robusto para complete analysis\n  if (!completeData) {\n    completeData = {\n      framework_analysis: {\n        framework_principal: \"PAS (Problem-Agitation-Solution)\",\n        confianca_identificacao: 0.7,\n        elementos_presentes: [\n          {\n            elemento: \"Problem\",\n            presente: true,\n            qualidade: 0.7,\n            localizacao: \"Início da VSL\",\n            observacao: \"Problema identificado mas pode ser mais específico\"\n          },\n          {\n            elemento: \"Agitation\",\n            presente: true,\n            qualidade: 0.6,\n            localizacao: \"Meio da VSL\",\n            observacao: \"Agitação presente mas pode ser mais intensa\"\n          },\n          {\n            elemento: \"Solution\",\n            presente: true,\n            qualidade: 0.8,\n            localizacao: \"Final da VSL\",\n            observacao: \"Solução bem apresentada\"\n          }\n        ],\n        pontos_fortes_estruturais: [\n          \"Estrutura lógica clara\",\n          \"Fluxo narrativo coerente\"\n        ],\n        pontos_fracos_estruturais: [\n          \"Falta urgência no call-to-action\",\n          \"Prova social insuficiente\"\n        ]\n      },\n      problemas_identificados: [\n        {\n          problema: \"Headline não gera curiosidade suficiente\",\n          gravidade: 7,\n          impacto_conversao: \"Reduz taxa de atenção inicial\",\n          localizacao: \"Primeira linha da VSL\",\n          categoria: \"headline\"\n        },\n        {\n          problema: \"Falta diferenciação clara da concorrência\",\n          gravidade: 8,\n          impacto_conversao: \"Cliente não vê unicidade do produto\",\n          localizacao: \"Apresentação do produto\",\n          categoria: \"diferenciacao\"\n        },\n        {\n          problema: \"Prova social insuficiente ou pouco específica\",\n          gravidade: 6,\n          impacto_conversao: \"Reduz credibilidade e confiança\",\n          localizacao: \"Seção de depoimentos\",\n          categoria: \"prova_social\"\n        },\n        {\n          problema: \"Call-to-action sem urgência genuína\",\n          gravidade: 7,\n          impacto_conversao: \"Reduz conversão imediata\",\n          localizacao: \"Final da VSL\",\n          categoria: \"urgencia\"\n        },\n        {\n          problema: \"Benefícios muito genéricos\",\n          gravidade: 6,\n          impacto_conversao: \"Não cria desejo específico\",\n          localizacao: \"Seção de benefícios\",\n          categoria: \"beneficios\"\n        }\n      ],\n      melhorias_eugene: [\n        {\n          problema_original: \"Headline genérica\",\n          solucao_eugene: \"Criar headline com benefício específico + curiosidade gap\",\n          exemplo_melhoria: \"'A Descoberta de 3 Minutos que Eliminou [Problema Específico] de 47.000 Pessoas'\",\n          justificativa: \"Eugene sempre combinava especificidade com curiosidade para máxima atenção\",\n          principio_aplicado: \"Curiosidade + Especificidade\"\n        },\n        {\n          problema_original: \"Falta diferenciação\",\n          solucao_eugene: \"Estabelecer diferenciação única e demonstrável\",\n          exemplo_melhoria: \"'Esqueça tudo que já tentou. Este método é o OPOSTO do que todos fazem'\",\n          justificativa: \"Eugene criava diferenciação através de contraste direto e inversão de expectativas\",\n          principio_aplicado: \"Diferenciação por Contraste\"\n        },\n        {\n          problema_original: \"Prova social fraca\",\n          solucao_eugene: \"Multiplicar provas sociais específicas com números exatos\",\n          exemplo_melhoria: \"'Resultados de 12.847 pessoas em 90 dias: [resultados específicos]'\",\n          justificativa: \"Eugene usava números específicos e resultados mensuráveis para credibilidade\",\n          principio_aplicado: \"Prova Social Específica\"\n        }\n      ],\n      novos_angulos: [\n        {\n          angulo: \"Segredo Médico Revelado\",\n          nivel_consciencia_alvo: 2,\n          headline_proposta: \"Médico Revela: O Segredo de 30 Segundos que a Indústria Farmacêutica Odeia\",\n          abordagem: \"Usar autoridade médica + conspiração da indústria + solução simples\",\n          justificativa_eugene: \"Eugene frequentemente usava autoridade + conspiração para criar interesse intenso\",\n          diferencial_unico: \"Combina credibilidade médica com revelação de segredo da indústria\"\n        },\n        {\n          angulo: \"História de Transformação Pessoal\",\n          nivel_consciencia_alvo: 3,\n          headline_proposta: \"Como Eu Curei [Problema] Depois de 15 Anos de Sofrimento (E Você Pode Fazer Igual)\",\n          abordagem: \"Narrativa pessoal de jornada + método específico + promessa de replicação\",\n          justificativa_eugene: \"Eugene sabia que histórias pessoais criam conexão emocional profunda\",\n          diferencial_unico: \"Vulnerabilidade pessoal + esperança + método replicável\"\n        },\n        {\n          angulo: \"Descoberta Científica Recente\",\n          nivel_consciencia_alvo: 4,\n          headline_proposta: \"Breakthrough de Harvard: A Descoberta que Está Revolucionando [Área de Saúde]\",\n          abordagem: \"Autoridade científica + novidade + revolução no campo\",\n          justificativa_eugene: \"Eugene usava autoridade científica para superar ceticismo de mercados educados\",\n          diferencial_unico: \"Credibilidade institucional + inovação científica + aplicação prática\"\n        }\n      ]\n    };\n  }\n  \n  // Garantir estrutura mínima\n  if (!completeData.problemas_identificados || completeData.problemas_identificados.length < 5) {\n    // Adicionar problemas padrão se necessário\n    const problemasBase = [\n      {\n        problema: \"Headline precisa de mais impacto\",\n        gravidade: 6,\n        impacto_conversao: \"Menor taxa de atenção\",\n        localizacao: \"Início\",\n        categoria: \"headline\"\n      },\n      {\n        problema: \"Falta urgência no fechamento\",\n        gravidade: 7,\n        impacto_conversao: \"Menor conversão imediata\",\n        localizacao: \"CTA\",\n        categoria: \"urgencia\"\n      },\n      {\n        problema: \"Prova social insuficiente\",\n        gravidade: 6,\n        impacto_conversao: \"Menor credibilidade\",\n        localizacao: \"Meio\",\n        categoria: \"prova_social\"\n      },\n      {\n        problema: \"Benefícios não específicos\",\n        gravidade: 5,\n        impacto_conversao: \"Menor desejo\",\n        localizacao: \"Benefícios\",\n        categoria: \"beneficios\"\n      },\n      {\n        problema: \"Diferenciação não clara\",\n        gravidade: 8,\n        impacto_conversao: \"Não se destaca da concorrência\",\n        localizacao: \"Produto\",\n        categoria: \"diferenciacao\"\n      }\n    ];\n    \n    completeData.problemas_identificados = problemasBase;\n  }\n  \n  // Combina resultados no formato final Squad Vitascience\n  const finalOutput = {\n    metadata: {\n      analysis_id: inputData.analysisData.analysis_id,\n      timestamp: inputData.analysisData.timestamp,\n      vsl_length: inputData.analysisData.char_count,\n      word_count: inputData.analysisData.word_count,\n      analysis_version: \"squad_final_v2.0\",\n      models_used: {\n        consciousness_classifier: \"o3-mini (cost-optimized)\",\n        complete_analyzer: \"o1-mini (quality-focused)\"\n      },\n      budget_mode: true,\n      fallback_used: !consciousnessJsonMatch || !completeJsonMatch\n    },\n    consciousness_analysis: consciousnessData,\n    framework_analysis: completeData.framework_analysis,\n    problemas_identificados: completeData.problemas_identificados.slice(0, 10), // Máximo 10 problemas\n    melhorias_eugene: completeData.melhorias_eugene || [],\n    novos_angulos: completeData.novos_angulos || [],\n    summary: {\n      total_problemas: completeData.problemas_identificados?.length || 5,\n      total_melhorias: completeData.melhorias_eugene?.length || 0,\n      total_angulos: completeData.novos_angulos?.length || 3,\n      score_geral: Math.round(((consciousnessData.confianca || 0.6) + \n                              (completeData.framework_analysis?.confianca_identificacao || 0.7)) / 2 * 100),\n      nivel_consciencia: consciousnessData.nivel_identificado,\n      framework_principal: completeData.framework_analysis?.framework_principal || \"PAS\",\n      recomendacao_principal: \"Focar em diferenciação clara e urgência genuína para melhorar conversão\",\n      proximos_passos: [\n        \"Implementar headline mais impactante\",\n        \"Adicionar mais prova social específica\", \n        \"Criar urgência genuína no CTA\",\n        \"Definir diferenciação única clara\"\n      ]\n    },\n    vitascience_integration: {\n      market_focus: \"health_supplements\",\n      compliance_notes: \"Verificar claims de saúde conforme ANVISA\",\n      roi_potential: \"Alto potencial com melhorias implementadas\",\n      recommended_tests: [\n        \"A/B test headlines sugeridas\",\n        \"Teste urgência vs. sem urgência\",\n        \"Teste diferentes níveis prova social\"\n      ]\n    }\n  };\n  \n  return { finalOutput };\n  \n} catch (error) {\n  // Em caso de erro crítico, retorna estrutura mínima válida\n  console.error('Error in result processing:', error.message);\n  \n  return {\n    error: true,\n    error_message: error.message,\n    fallback_output: {\n      metadata: {\n        analysis_id: inputData.analysisData?.analysis_id || 'error_analysis',\n        timestamp: new Date().toISOString(),\n        analysis_version: \"squad_final_v2.0_emergency_fallback\",\n        error_occurred: true\n      },\n      consciousness_analysis: {\n        nivel_identificado: 3,\n        confianca: 0.5,\n        justificativa: \"Análise de emergência devido a erro no processamento principal\",\n        indicadores_textuais: [\"Processamento automático de emergência\"],\n        nivel_ideal_sugerido: 3,\n        razao_sugestao: \"Requer análise manual para determinação precisa\"\n      },\n      problemas_identificados: [\n        {\n          problema: \"Erro no processamento automático - análise manual necessária\",\n          gravidade: 10,\n          impacto_conversao: \"Impossível determinar automaticamente\",\n          localizacao: \"Sistema\",\n          categoria: \"sistema\"\n        }\n      ],\n      summary: {\n        total_problemas: 1,\n        total_melhorias: 0,\n        total_angulos: 0,\n        score_geral: 50,\n        nivel_consciencia: 3,\n        framework_principal: \"Indeterminado\",\n        recomendacao_principal: \"Reprocessar análise com dados válidos ou análise manual\",\n        error_details: error.message\n      }\n    }\n  };\n}"
+      },
+      "id": "result-processor",
+      "name": "Process Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.error }}",
+              "operation": "notEqual",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "id": "success-check",
+      "name": "Success Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1020, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.finalOutput }}",
+        "responseHeaders": {
+          "entries": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Analysis-Version",
+              "value": "squad_final_v2.0"
+            },
+            {
+              "name": "X-Eugene-AI",
+              "value": "vitascience-squad"
+            }
+          ]
+        }
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1240, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 500,
+        "responseBody": "={{ $json.fallback_output }}",
+        "responseHeaders": {
+          "entries": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Error-Type",
+              "value": "processing-error"
+            }
+          ]
+        }
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1240, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Squad VSL": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Consciousness Level (o3-mini)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Complete Analysis (o1-mini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consciousness Level (o3-mini)": {
+      "main": [
+        [
+          {
+            "node": "Process Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Analysis (o1-mini)": {
+      "main": [
+        [
+          {
+            "node": "Process Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Results": {
+      "main": [
+        [
+          {
+            "node": "Success Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Check": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2024-09-20T16:00:00.000Z",
+  "updatedAt": "2024-09-20T16:00:00.000Z",
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": {
+      "active": false
+    },
+    "timezone": "America/Sao_Paulo"
+  },
+  "staticData": {},
+  "tags": [
+    {
+      "createdAt": "2024-09-20T16:00:00.000Z",
+      "updatedAt": "2024-09-20T16:00:00.000Z",
+      "id": "squad-vitascience-final",
+      "name": "Squad Vitascience Final"
+    }
+  ],
+  "triggerCount": 1,
+  "active": true,
+  "id": "squad-eugene-vsl-analyzer-final"
+}

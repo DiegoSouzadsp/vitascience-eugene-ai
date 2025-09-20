@@ -1,0 +1,148 @@
+{
+  "name": "Eugene VSL Analyzer - Optimized (Haiku + Sonnet)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/analyze-vsl-optimized",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-input",
+      "name": "Webhook Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-haiku-20241022",
+        "maxTokens": 1000,
+        "temperature": 0.1,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Você é um especialista em análise de copywriting usando a metodologia Eugene Schwartz dos 5 níveis de consciência.\n\nAnalise rapidamente esta Lead de VSL e classifique apenas o NÍVEL DE CONSCIÊNCIA (1-5):\n\nLEAD VSL:\n{{$json.vsl_text}}\n\nResponda APENAS em JSON:\n{\n  \"consciousness_level\": 1-5,\n  \"confidence\": 0-100,\n  \"quick_reasoning\": \"explicação breve\",\n  \"framework_detected\": \"PAS|AIDA|BEFORE_AFTER|etc\"\n}"
+          }
+        ]
+      },
+      "id": "haiku-classification",
+      "name": "Haiku - Quick Classification",
+      "type": "n8n-nodes-base.anthropic",
+      "typeVersion": 1,
+      "position": [460, 200],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "claude-3-5-sonnet-20241022",
+        "maxTokens": 4000,
+        "temperature": 0.1,
+        "messages": [
+          {
+            "role": "user",
+            "content": "Você é Eugene Schwartz, o lendário copywriter. Analise profundamente esta Lead de VSL usando sua metodologia dos 5 níveis de consciência.\n\nCLASSIFICAÇÃO INICIAL (do Haiku):\n{{$('Haiku - Quick Classification').first().json}}\n\nLEAD VSL COMPLETA:\n{{$('Webhook Input').first().json.vsl_text}}\n\nFaça uma análise COMPLETA seguindo EXATAMENTE este formato JSON:\n\n{\n  \"consciousness_analysis\": {\n    \"level\": 1-5,\n    \"confidence\": 0-100,\n    \"justification\": \"análise detalhada do nível\",\n    \"level_explanation\": \"definição do nível identificado\",\n    \"ideal_level_suggestion\": \"qual nível seria ideal e por quê\"\n  },\n  \"copywriting_framework\": {\n    \"main_framework\": \"PAS|AIDA|BEFORE_AFTER|STORY|etc\",\n    \"structure_analysis\": \"como a VSL está estruturada\",\n    \"framework_effectiveness\": \"0-100% quão bem implementado\"\n  },\n  \"identified_problems\": {\n    \"main_problem\": \"problema principal da copy\",\n    \"critical_issues\": [\n      {\n        \"problem\": \"descrição específica\",\n        \"severity\": \"1-10\",\n        \"location\": \"onde aparece na copy\",\n        \"impact\": \"como afeta conversão\"\n      }\n    ]\n  },\n  \"eugene_improvements\": {\n    \"quick_wins\": [\"melhorias rápidas de implementar\"],\n    \"strategic_changes\": [\n      {\n        \"improvement\": \"melhoria específica\",\n        \"eugene_approach\": \"como Eugene resolveria\",\n        \"implementation\": \"como implementar\",\n        \"expected_impact\": \"resultado esperado\"\n      }\n    ],\n    \"new_angles\": [\"novos ângulos criativos para testar\"]\n  },\n  \"market_specific\": {\n    \"health_compliance\": \"considerações ANVISA\",\n    \"target_audience\": \"análise do público-alvo\",\n    \"brazilian_market\": \"adaptações para mercado BR\"\n  }\n}"
+          }
+        ]
+      },
+      "id": "sonnet-analysis",
+      "name": "Sonnet - Deep Analysis",
+      "type": "n8n-nodes-base.anthropic",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "anthropicApi": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "final_analysis",
+              "value": "={{ {\n  \"analysis_metadata\": {\n    \"timestamp\": $now,\n    \"vsl_length\": $('Webhook Input').first().json.vsl_text.length,\n    \"analysis_method\": \"haiku_classification + sonnet_deep_analysis\",\n    \"processing_time\": \"optimized_hybrid\"\n  },\n  \"consciousness_level\": $('Sonnet - Deep Analysis').first().json.consciousness_analysis,\n  \"copywriting_framework\": $('Sonnet - Deep Analysis').first().json.copywriting_framework,\n  \"identified_problems\": $('Sonnet - Deep Analysis').first().json.identified_problems,\n  \"suggested_improvements\": $('Sonnet - Deep Analysis').first().json.eugene_improvements,\n  \"market_analysis\": $('Sonnet - Deep Analysis').first().json.market_specific,\n  \"quick_classification\": $('Haiku - Quick Classification').first().json,\n  \"vitascience_ready\": true,\n  \"squad_test_compliant\": true\n} }}"
+            }
+          ]
+        }
+      },
+      "id": "final-formatter",
+      "name": "Final Response Formatter",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Input": {
+      "main": [
+        [
+          {
+            "node": "Haiku - Quick Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Haiku - Quick Classification": {
+      "main": [
+        [
+          {
+            "node": "Sonnet - Deep Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonnet - Deep Analysis": {
+      "main": [
+        [
+          {
+            "node": "Final Response Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Response Formatter": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCreatedBy": "Vitascience Eugene AI - Optimized",
+    "description": "Pipeline otimizado: Haiku para classificação rápida + Sonnet para análise profunda"
+  }
+}

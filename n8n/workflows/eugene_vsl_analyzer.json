@@ -1,0 +1,301 @@
+{
+  "name": "Eugene VSL Analyzer - Complete Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/analyze-vsl",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "57890cec-b22e-4f80-82ad-db5b24c5b44e",
+      "name": "Webhook - VSL Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "eugene-vsl-analyzer"
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://rag-api:8000/analyze/consciousness",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $json.vsl_text,\n  \"analysis_type\": \"consciousness\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "b45678fa-3e4f-45cd-8f90-123456789abc",
+      "name": "Consciousness Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        460,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://rag-api:8000/analyze/framework",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $json.vsl_text,\n  \"analysis_type\": \"framework\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c56789ab-4f5a-56de-9a01-234567890bcd",
+      "name": "Framework Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://rag-api:8000/analyze/problems",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"vsl_text\": $json.vsl_text,\n  \"analysis_type\": \"problems\",\n  \"include_context\": true\n} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "d67890bc-5a6b-67ef-ab12-345678901cde",
+      "name": "Problem Identification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        460,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://rag-api:8000/analyze/improvements",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"problemas_identificados\": $('Problem Identification').first().json.problemas_identificados,\n  \"vsl_text\": $('Webhook - VSL Input').first().json.vsl_text\n} }}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "e78901cd-6b7c-78fa-bc23-456789012def",
+      "name": "Generate Improvements",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "object": [
+            {
+              "name": "analysis_summary",
+              "value": "={{ {\n  \"timestamp\": $now,\n  \"vsl_length\": $('Webhook - VSL Input').first().json.vsl_text.length,\n  \"consciousness_level\": $('Consciousness Analysis').first().json.nivel_identificado,\n  \"consciousness_confidence\": $('Consciousness Analysis').first().json.confianca,\n  \"framework_used\": $('Framework Analysis').first().json.framework_principal,\n  \"problems_count\": $('Problem Identification').first().json.problemas_identificados.length,\n  \"overall_score\": $('Problem Identification').first().json.score_geral_copy,\n  \"improvements_count\": $('Generate Improvements').first().json.melhorias_sugeridas.length\n} }}"
+            },
+            {
+              "name": "consciousness_analysis",
+              "value": "={{ $('Consciousness Analysis').first().json }}"
+            },
+            {
+              "name": "framework_analysis",
+              "value": "={{ $('Framework Analysis').first().json }}"
+            },
+            {
+              "name": "problems_analysis",
+              "value": "={{ $('Problem Identification').first().json }}"
+            },
+            {
+              "name": "improvements_analysis",
+              "value": "={{ $('Generate Improvements').first().json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f89012de-7c8d-89ab-cd34-567890123efa",
+      "name": "Combine Analysis Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        900,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Análise Completa VSL - Eugene Schwartz\n\n## Resumo Executivo\n- **Timestamp:** {{ $json.analysis_summary.timestamp }}\n- **Nível de Consciência:** {{ $json.consciousness_analysis.nivel_identificado }} ({{ Math.round($json.consciousness_analysis.confianca * 100) }}% confiança)\n- **Framework Principal:** {{ $json.framework_analysis.framework_principal }}\n- **Score Geral:** {{ $json.problems_analysis.score_geral_copy }}/10\n- **Problemas Identificados:** {{ $json.analysis_summary.problems_count }}\n- **Melhorias Sugeridas:** {{ $json.analysis_summary.improvements_count }}\n\n## 1. Análise de Consciência\n\n### Nível Identificado: {{ $json.consciousness_analysis.nivel_identificado }}\n**Confiança:** {{ Math.round($json.consciousness_analysis.confianca * 100) }}%\n\n**Justificativa:**\n{{ $json.consciousness_analysis.justificativa }}\n\n**Indicadores Textuais:**\n{{ $json.consciousness_analysis.indicadores_textuais.map(ind => '- ' + ind).join('\\n') }}\n\n**Nível Ideal Sugerido:** {{ $json.consciousness_analysis.nivel_ideal_sugerido }}\n**Razão:** {{ $json.consciousness_analysis.razao_sugestao }}\n\n## 2. Análise de Framework\n\n### Framework Principal: {{ $json.framework_analysis.framework_principal }}\n**Confiança de Identificação:** {{ Math.round($json.framework_analysis.confianca_identificacao * 100) }}%\n\n**Estrutura Completa:**\n- **Introdução:** {{ $json.framework_analysis.estrutura_completa.introducao }}\n- **Desenvolvimento:** {{ $json.framework_analysis.estrutura_completa.desenvolvimento }}\n- **Fechamento:** {{ $json.framework_analysis.estrutura_completa.fechamento }}\n\n**Pontos Fortes:**\n{{ $json.framework_analysis.pontos_fortes_estruturais.map(ponto => '✅ ' + ponto).join('\\n') }}\n\n**Pontos Fracos:**\n{{ $json.framework_analysis.pontos_fracos_estruturais.map(ponto => '❌ ' + ponto).join('\\n') }}\n\n## 3. Problemas Identificados\n\n**Problema Principal:** {{ $json.problems_analysis.problema_principal }}\n\n{{ $json.problems_analysis.problemas_identificados.map((prob, i) => `### ${i+1}. ${prob.problema}\n**Categoria:** ${prob.categoria}\n**Severidade:** ${prob.severidade}/10\n**Localização:** ${prob.localizacao}\n**Por que é problema:** ${prob.por_que_problema}\n**Impacto na conversão:** ${prob.impacto_conversao}\n`).join('\\n') }}\n\n## 4. Melhorias Sugeridas\n\n### Quick Wins (Implementação Rápida)\n{{ $json.improvements_analysis.melhorias_quick_wins.map(win => '🚀 ' + win).join('\\n') }}\n\n### Prioridade de Implementação\n{{ $json.improvements_analysis.prioridade_implementacao.map((item, i) => `${i+1}. ${item}`).join('\\n') }}\n\n### Detalhes das Melhorias\n{{ $json.improvements_analysis.melhorias_sugeridas.map((mel, i) => `#### ${i+1}. ${mel.melhoria}\n**Problema Resolvido:** ${mel.problema_resolvido}\n**Metodologia Eugene:** ${mel.metodologia_eugene}\n**Como Implementar:** ${mel.implementacao}\n**Exemplo Reescrito:** ${mel.exemplo_reescrito}\n**Impacto Esperado:** ${mel.impacto_esperado}\n`).join('\\n---\\n') }}\n\n## Conclusão\n\nEsta análise foi realizada usando a metodologia Eugene Schwartz dos 5 níveis de consciência. \nImplementar as melhorias sugeridas pode aumentar significativamente a conversão da VSL.\n\n**Próximos Passos Recomendados:**\n1. Implementar quick wins primeiro\n2. Seguir ordem de prioridade das melhorias\n3. Testar mudanças individualmente\n4. Medir impacto na conversão\n\n---\n*Relatório gerado automaticamente pela Vitascience Eugene AI*",
+        "options": {}
+      },
+      "id": "g90123ef-8d9e-90bc-de45-678901234fab",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "h01234fa-9e0f-01cd-ef56-789012345abc",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "generic",
+        "requestMethod": "POST",
+        "url": "={{ $('Webhook - VSL Input').first().json.webhook_callback_url }}",
+        "jsonParameters": true,
+        "parametersJson": "={{ {\n  \"status\": \"completed\",\n  \"analysis_id\": $('Webhook - VSL Input').first().json.analysis_id || $runIndex,\n  \"summary\": $('Combine Analysis Results').first().json.analysis_summary,\n  \"full_report\": $('Generate Report').first().json,\n  \"raw_data\": {\n    \"consciousness\": $('Consciousness Analysis').first().json,\n    \"framework\": $('Framework Analysis').first().json,\n    \"problems\": $('Problem Identification').first().json,\n    \"improvements\": $('Generate Improvements').first().json\n  }\n} }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "i12345ab-0f1a-12de-fa67-890123456bcd",
+      "name": "Callback Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1120,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - VSL Input": {
+      "main": [
+        [
+          {
+            "node": "Consciousness Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Framework Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Problem Identification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consciousness Analysis": {
+      "main": [
+        [
+          {
+            "node": "Combine Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Framework Analysis": {
+      "main": [
+        [
+          {
+            "node": "Combine Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Problem Identification": {
+      "main": [
+        [
+          {
+            "node": "Generate Improvements",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Improvements": {
+      "main": [
+        [
+          {
+            "node": "Combine Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Analysis Results": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Callback Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "eugene-vsl-analyzer-v1.0",
+  "meta": {
+    "templateCreatedBy": "Vitascience Eugene AI",
+    "description": "Complete VSL analysis pipeline using Eugene Schwartz methodology",
+    "tags": ["eugene-schwartz", "vsl-analysis", "copywriting", "vitascience"]
+  },
+  "id": "eugene-vsl-analyzer-complete",
+  "tags": [
+    {
+      "createdAt": "2024-09-20T09:00:00.000Z",
+      "updatedAt": "2024-09-20T09:00:00.000Z",
+      "id": "eugene-analysis",
+      "name": "Eugene Analysis"
+    }
+  ]
+}
