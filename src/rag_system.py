@@ -43,7 +43,7 @@ class EugeneKnowledge(Base):
     category = Column(String(50), index=True)
     chapter = Column(String(100), index=True)
     confidence_score = Column(Float)
-    metadata = Column(JSONB)
+    meta_data = Column(JSONB)
     created_at = Column(Text)  # ISO timestamp
 
     # Add vector similarity index for performance
@@ -313,7 +313,7 @@ class EugeneRAGSystem:
                     category=chunk.category,
                     chapter=chunk.chapter,
                     confidence_score=chunk.confidence_score,
-                    metadata=chunk.metadata,
+                    meta_data=chunk.metadata,
                     created_at=timestamp
                 )
 
@@ -353,7 +353,7 @@ class EugeneRAGSystem:
         logger.info(f"Total chunks created: {len(all_chunks)}")
 
         # Store chunks with embeddings
-        success = await self.store_chunks(all_chunks)
+        success = self.store_chunks(all_chunks)
 
         if success:
             logger.info("Eugene Schwartz book processing completed successfully")
@@ -395,7 +395,7 @@ class EugeneRAGSystem:
                     similarity_score=float(row.similarity_score),
                     category=row.category,
                     chapter=row.chapter,
-                    metadata=row.metadata or {}
+                    metadata=row.meta_data or {}
                 ))
 
             session.close()
@@ -436,7 +436,7 @@ class EugeneRAGSystem:
                     similarity_score=float(row.similarity_score),
                     category=row.category,
                     chapter=row.chapter,
-                    metadata=row.metadata or {}
+                    metadata=row.meta_data or {}
                 ))
 
             session.close()
@@ -477,7 +477,7 @@ class EugeneRAGSystem:
                     similarity_score=float(row.similarity_score),
                     category=row.category,
                     chapter=row.chapter,
-                    metadata=row.metadata or {}
+                    metadata=row.meta_data or {}
                 ))
 
             session.close()
