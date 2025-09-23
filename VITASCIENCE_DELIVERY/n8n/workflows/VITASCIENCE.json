@@ -1,0 +1,275 @@
+{
+  "name": "VITASCIENCE",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Input Validation & Topic Extraction for RAG\nlet requestData;\n\n// Extract VSL data from webhook\nconst webhookData = $json;\nconsole.log('Webhook received:', Object.keys(webhookData));\n\n// Handle different input formats\nif (webhookData && webhookData.body) {\n  requestData = webhookData.body;\n} else if (webhookData && webhookData.vsl_text) {\n  requestData = webhookData;\n} else {\n  const input = $input.all();\n  requestData = input[0]?.json || input[0] || {};\n}\n\n// Validate VSL text\nif (!requestData || !requestData.vsl_text) {\n  throw new Error('vsl_text is required in request body');\n}\n\n// Clean VSL text\nconst cleanVslText = requestData.vsl_text\n  .trim()\n  .replace(/\\s+/g, ' ')\n  .replace(/[\\u201C\\u201D]/g, '\"')\n  .replace(/[\\u2018\\u2019]/g, \"'\");\n\nif (cleanVslText.length < 50) {\n  throw new Error('VSL text must be at least 50 characters long');\n}\n\n// INTELLIGENT RAG query generation based on VSL content\nfunction generateRAGQueries(vslText) {\n  const text = vslText.toLowerCase();\n  const queries = [];\n  \n  // Always include core Eugene concepts\n  queries.push('Eugene Schwartz market consciousness levels');\n  queries.push('breakthrough advertising methodology');\n  \n  // Consciousness level detection queries\n  if (text.includes('descoberta') || text.includes('discovery') || text.includes('segredo') || text.includes('você não sabia')) {\n    queries.push('unaware of problem consciousness level');\n    queries.push('creating awareness in prospects');\n    queries.push('educating unaware market');\n  }\n  \n  if (text.includes('problema') || text.includes('dor') || text.includes('frustração')) {\n    queries.push('problem aware consciousness level');\n    queries.push('problem agitation techniques');\n    queries.push('pain amplification Eugene Schwartz');\n  }\n  \n  if (text.includes('solução') || text.includes('método') || text.includes('sistema')) {\n    queries.push('solution aware consciousness level');\n    queries.push('product differentiation techniques');\n    queries.push('competitive advantage copywriting');\n  }\n  \n  if (text.includes('prova') || text.includes('resultado') || text.includes('testemunho')) {\n    queries.push('product aware consciousness level');\n    queries.push('proof and credibility techniques');\n    queries.push('testimonial effectiveness');\n  }\n  \n  if (text.includes('oferta') || text.includes('comprar') || text.includes('clique')) {\n    queries.push('ready to buy consciousness level');\n    queries.push('urgency and scarcity techniques');\n    queries.push('call to action optimization');\n  }\n  \n  // Framework detection queries\n  if (text.includes('antes') && text.includes('depois')) {\n    queries.push('before after bridge framework');\n    queries.push('transformation storytelling');\n  }\n  \n  if (text.includes('atenção')) {\n    queries.push('AIDA framework copywriting');\n    queries.push('attention grabbing techniques');\n  }\n  \n  // Health market specific queries\n  if (text.includes('saúde') || text.includes('emagr') || text.includes('peso') || text.includes('gordura')) {\n    queries.push('health market copy examples');\n    queries.push('weight loss advertising Eugene');\n    queries.push('health claims copywriting');\n    queries.push('transformation results health');\n  }\n  \n  // Headline and desire queries\n  if (text.includes('15 segundo') || text.includes('rápido') || text.includes('fácil')) {\n    queries.push('speed benefit headlines');\n    queries.push('convenience promise techniques');\n  }\n  \n  // Mechanism queries\n  if (text.includes('processo') || text.includes('funciona') || text.includes('como')) {\n    queries.push('mechanism explanation techniques');\n    queries.push('how it works copywriting');\n    queries.push('scientific credibility');\n  }\n  \n  // Story and curiosity queries\n  if (text.includes('história') || text.includes('descobriu') || text.includes('cientista')) {\n    queries.push('storytelling in copywriting');\n    queries.push('authority figure credibility');\n    queries.push('curiosity gap techniques');\n  }\n  \n  return queries.slice(0, 12); // Limit for performance\n}\n\nconst ragQueries = generateRAGQueries(cleanVslText);\n\n// Prepare processed data\nconst processedData = {\n  vsl_text: cleanVslText,\n  analysis_id: `eugene_rag_${Date.now()}`,\n  timestamp: new Date().toISOString(),\n  rag_queries: ragQueries,\n  options: requestData.options || {\n    detailed_analysis: true,\n    min_problems: 5,\n    min_angles: 3,\n    eugene_knowledge: true\n  },\n  metadata: {\n    word_count: cleanVslText.split(' ').length,\n    char_count: cleanVslText.length,\n    estimated_reading_time: Math.ceil(cleanVslText.split(' ').length / 200),\n    rag_queries_generated: ragQueries.length,\n    knowledge_enhanced: true\n  }\n};\n\nconsole.log(`Eugene RAG Analysis Started - ID: ${processedData.analysis_id}`);\nconsole.log(`RAG queries generated: ${ragQueries.length}`);\nconsole.log(`Queries: ${ragQueries.join(', ')}`);\n\nreturn processedData;"
+      },
+      "id": "5a2a93d8-e380-4e33-af2c-848de9737dfb",
+      "name": "Input & RAG Query Generation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://eugene_rag_api:8000/retrieve/consciousness",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "copy_text",
+              "value": "={{ $json.vsl_text }}"
+            },
+            {
+              "name": "max_results",
+              "value": 10
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "017fbea4-fa02-4f17-9a50-84144c96d59c",
+      "name": "Eugene Knowledge Retrieval",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -592,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// DYNAMIC RAG - Intelligent relevance-based filtering\nconsole.log('=== EUGENE DYNAMIC RAG PROCESSING ===');\n\nconst processedData = $('Input & RAG Query Generation').first().json;\n\n// O N8N retorna 5 objetos separados, não um array!\nconst allInputs = $input.all();\nconsole.log('Total RAG inputs received:', allInputs.length);\n\nlet ragContext = '';\nlet ragStats = {\n  chunks_retrieved: 0,\n  categories_covered: [],\n  queries_successful: 0,\n  total_queries: processedData?.rag_queries?.length || 0\n};\n\ntry {\n  // DYNAMIC RAG PROCESSING - Filter by relevance\n  let allChunks = [];\n  let validChunks = [];\n\n  // Collect all chunks first\n  allInputs.forEach((inputItem, index) => {\n    const chunk = inputItem.json;\n    console.log(`Processing chunk ${index + 1}:`, Object.keys(chunk));\n\n    if (chunk && chunk.content && chunk.similarity_score) {\n      allChunks.push({\n        ...chunk,\n        index: index + 1\n      });\n      console.log(`📥 Chunk ${index + 1} - relevance: ${(chunk.similarity_score * 100).toFixed(0)}%`);\n    } else {\n      console.log(`❌ Chunk ${index + 1} invalid or no similarity score`);\n    }\n  });\n\n  // DYNAMIC FILTERING LOGIC\n  const minScore = 0.7;  // Minimum 70% relevance\n  const maxChunks = 8;   // Maximum 8 chunks\n  const minChunks = 2;   // Minimum 2 chunks\n\n  console.log(`=== DYNAMIC FILTERING ===`);\n  console.log(`Total chunks received: ${allChunks.length}`);\n  console.log(`Min relevance threshold: ${(minScore * 100)}%`);\n\n  // Filter by relevance score\n  const highRelevanceChunks = allChunks.filter(chunk => chunk.similarity_score >= minScore);\n  console.log(`High relevance chunks (>=${(minScore * 100)}%): ${highRelevanceChunks.length}`);\n\n  // Adaptive selection\n  if (highRelevanceChunks.length >= minChunks) {\n    // Use high relevance chunks\n    validChunks = highRelevanceChunks.slice(0, maxChunks);\n    console.log(`✅ Using ${validChunks.length} high-relevance chunks`);\n  } else {\n    // Fallback: use top chunks even if lower relevance\n    const sortedChunks = allChunks.sort((a, b) => b.similarity_score - a.similarity_score);\n    validChunks = sortedChunks.slice(0, Math.max(minChunks, Math.min(allChunks.length, 5)));\n    console.log(`⚠️ Fallback: Using top ${validChunks.length} chunks (lower relevance)`);\n  }\n\n  // Track categories from selected chunks\n  validChunks.forEach(chunk => {\n    const category = chunk.category || 'general';\n    if (!ragStats.categories_covered.includes(category)) {\n      ragStats.categories_covered.push(category);\n    }\n  });\n\n  console.log('Valid chunks found:', validChunks.length);\n\n  if (validChunks.length > 0) {\n    ragContext = 'EUGENE SCHWARTZ BREAKTHROUGH ADVERTISING KNOWLEDGE FROM BOOK:\\n\\n';\n\n    validChunks.forEach((chunk, index) => {\n      const category = chunk.category || 'general';\n      const score = chunk.similarity_score ? ` (relevance: ${(chunk.similarity_score * 100).toFixed(0)}%)` : '';\n      const chapter = chunk.chapter ? ` - ${chunk.chapter}` : '';\n\n      ragContext += `[CHUNK ${index + 1} - ${category.toUpperCase()}${score}${chapter}]\\n${chunk.content}\\n\\n---\\n\\n`;\n    });\n\n    ragStats.chunks_retrieved = validChunks.length;\n    ragStats.queries_successful = processedData.rag_queries.length;\n\n    console.log('✅ SUCCESS: Built context with', validChunks.length, 'chunks');\n    console.log('✅ Context length:', ragContext.length, 'characters');\n    console.log('✅ Categories:', ragStats.categories_covered.join(', '));\n  } else {\n    console.log('❌ No valid chunks found');\n  }\n\n} catch (error) {\n  console.error('❌ Processing error:', error);\n}\n\n// Only fallback if NO chunks at all\nif (ragStats.chunks_retrieved === 0) {\n  console.log('⚠️ FALLBACK: No RAG data available');\n  ragContext = 'EUGENE SCHWARTZ METHODOLOGY FALLBACK:\\nUse the 5 Levels of Market Consciousness to analyze this copy.';\n} else {\n  console.log('✅ SUCCESS: Using real book knowledge!');\n}\n\nconst enhancedData = {\n  vsl_text: processedData.vsl_text,\n  eugene_context: ragContext,\n  analysis_id: processedData.analysis_id,\n  timestamp: processedData.timestamp,\n  options: processedData.options,\n  rag_stats: ragStats,\n  metadata: {\n    ...processedData.metadata,\n    rag_enhanced: ragStats.chunks_retrieved > 0,\n    context_length: ragContext.length,\n    knowledge_source: ragStats.chunks_retrieved > 0 ? 'breakthrough_advertising_book' : 'fallback_methodology',\n    chunks_provided_to_llm: ragStats.chunks_retrieved\n  }\n};\n\nconsole.log('=== FINAL RESULTS ===');\nconsole.log('- Chunks provided to LLM:', ragStats.chunks_retrieved);\nconsole.log('- Knowledge source:', enhancedData.metadata.knowledge_source);\nconsole.log('- RAG enhanced:', enhancedData.metadata.rag_enhanced);\n\nreturn enhancedData;"
+      },
+      "id": "1cbd1de5-3f03-4136-b217-e5e30c5e85bf",
+      "name": "Eugene Knowledge Integration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o-mini"
+            },
+            {
+              "name": "messages",
+              "value": "={{[{\"role\": \"system\", \"content\": \"Você é Eugene Schwartz em pessoa. Você tem 30+ anos de experiência criando cartas de vendas que geraram milhões de dólares. Você é o criador da metodologia dos 5 Níveis de Consciência do Mercado e autor do livro 'Breakthrough Advertising'. Você analisa copy com a profundidade de quem viveu e respirou copywriting por décadas. Responda SEMPRE em JSON válido seguindo exatamente a estrutura solicitada, usando todo o conhecimento do seu livro.\"}, {\"role\": \"user\", \"content\": \"EUGENE SCHWARTZ - ANÁLISE COM CONHECIMENTO DO SEU LIVRO\\n\\nCONHECIMENTO DO SEU LIVRO 'BREAKTHROUGH ADVERTISING':\\n\" + $json.eugene_context + \"\\n\\nVSL PARA ANÁLISE USANDO SEU CONHECIMENTO:\\n\" + $json.vsl_text + \"\\n\\nComo EUGENE SCHWARTZ, usando TODO o conhecimento do seu livro 'Breakthrough Advertising', execute uma análise COMPLETA desta VSL da Vitascience.\\n\\nUse especificamente os princípios, técnicas e exemplos do seu livro para:\\n\\n1. CLASSIFICAR o nível de consciência exato (1-5)\\n2. IDENTIFICAR o framework de copywriting usado\\n3. ENCONTRAR problemas específicos baseados na sua metodologia\\n4. GERAR melhorias baseadas nos seus princípios\\n5. CRIAR novos ângulos usando suas técnicas\\n\\nRETORNE JSON OBRIGATÓRIO (estrutura exata):\\n{\\n  \\\"analise_consciencia\\\": {\\n    \\\"nivel_identificado\\\": 1-5,\\n    \\\"confianca\\\": 0.0-1.0,\\n    \\\"justificativa\\\": \\\"Análise detalhada EUGENE SCHWARTZ (mínimo 250 palavras) explicando por que este nível específico, citando trechos da VSL e conectando DIRETAMENTE com os princípios do seu livro Breakthrough Advertising. Mencione páginas ou conceitos específicos do livro quando relevante.\\\",\\n    \\\"indicadores_textuais\\\": [\\\"trecho literal 1 da VSL\\\", \\\"trecho literal 2 da VSL\\\", \\\"trecho literal 3 da VSL\\\"],\\n    \\\"nivel_ideal_sugerido\\\": 1-5,\\n    \\\"razao_sugestao\\\": \\\"Baseado na metodologia do Breakthrough Advertising, por que mudaria para este nível\\\"\\n  },\\n  \\\"estrutura_copy\\\": {\\n    \\\"framework_principal\\\": \\\"nome do framework identificado baseado no seu livro\\\",\\n    \\\"confianca_identificacao\\\": 0.0-1.0,\\n    \\\"elementos_presentes\\\": [\\\"elemento estrutural 1\\\", \\\"elemento estrutural 2\\\", \\\"elemento estrutural 3\\\"],\\n    \\\"pontos_fortes_estruturais\\\": [\\\"força baseada nos seus princípios\\\", \\\"força baseada nos seus princípios\\\"],\\n    \\\"pontos_fracos_estruturais\\\": [\\\"fraqueza segundo Breakthrough Advertising\\\", \\\"fraqueza segundo Breakthrough Advertising\\\"]\\n  },\\n  \\\"problemas_identificados\\\": [\\n    {\\n      \\\"problema\\\": \\\"problema específico identificado usando sua metodologia\\\",\\n      \\\"categoria\\\": \\\"CONSCIENCIA|ESTRUTURA|DESEJO|PROVA|URGENCIA|CTA|CREDIBILIDADE\\\",\\n      \\\"severidade\\\": 1-10,\\n      \\\"localizacao\\\": \\\"onde exatamente aparece na VSL\\\",\\n      \\\"por_que_problema\\\": \\\"explicação EUGENE SCHWARTZ baseada no Breakthrough Advertising\\\",\\n      \\\"impacto_conversao\\\": \\\"como afeta vendas segundo sua experiência\\\",\\n      \\\"principio_breakthrough\\\": \\\"qual princípio do seu livro foi violado\\\"\\n    }\\n  ],\\n  \\\"melhorias_sugeridas\\\": [\\n    {\\n      \\\"problema_resolvido\\\": \\\"qual problema resolve\\\",\\n      \\\"melhoria\\\": \\\"melhoria específica baseada no Breakthrough Advertising\\\",\\n      \\\"metodologia_eugene\\\": \\\"princípio específico do seu livro aplicado\\\",\\n      \\\"implementacao\\\": \\\"como implementar usando suas técnicas\\\",\\n      \\\"exemplo_reescrito\\\": \\\"reescrita no estilo Eugene Schwartz\\\",\\n      \\\"impacto_esperado\\\": \\\"resultado baseado na sua experiência\\\",\\n      \\\"referencia_livro\\\": \\\"conceito ou técnica específica do Breakthrough Advertising\\\"\\n    }\\n  ],\\n  \\\"novos_angulos\\\": [\\n    {\\n      \\\"nivel_consciencia_alvo\\\": 1-5,\\n      \\\"nome_angulo\\\": \\\"ângulo criativo único estilo Eugene Schwartz\\\",\\n      \\\"abordagem\\\": \\\"como abordar usando metodologia Breakthrough Advertising\\\",\\n      \\\"headline_sugerida\\\": \\\"headline no estilo Eugene Schwartz\\\",\\n      \\\"primeiro_paragrafo\\\": \\\"primeiro parágrafo completo no seu estilo\\\",\\n      \\\"diferencial\\\": \\\"diferencial baseado nos seus princípios\\\",\\n      \\\"metodologia_eugene\\\": \\\"técnica específica do Breakthrough Advertising\\\",\\n      \\\"publico_ideal\\\": \\\"perfil baseado na metodologia dos 5 níveis\\\",\\n      \\\"mecanismo_desejo\\\": \\\"como criar desejo usando suas técnicas\\\"\\n    }\\n  ],\\n  \\\"resumo_executivo\\\": {\\n    \\\"nivel_consciencia\\\": 0,\\n    \\\"framework_principal\\\": \\\"\\\",\\n    \\\"total_problemas\\\": 0,\\n    \\\"score_copy\\\": 1-10,\\n    \\\"total_melhorias\\\": 0,\\n    \\\"total_angulos\\\": 0,\\n    \\\"recomendacao_principal\\\": \\\"principal recomendação Eugene Schwartz baseada no Breakthrough Advertising\\\",\\n    \\\"potencial_aumento_conversao\\\": \\\"% estimado baseado na sua experiência\\\",\\n    \\\"breakthrough_grade\\\": \\\"A+ a F - nota segundo padrões Breakthrough Advertising\\\"\\n  },\\n  \\\"conhecimento_aplicado\\\": {\\n    \\\"principios_breakthrough_usados\\\": [\\\"princípio 1\\\", \\\"princípio 2\\\", \\\"princípio 3\\\"],\\n    \\\"tecnicas_livro_aplicadas\\\": [\\\"técnica 1\\\", \\\"técnica 2\\\", \\\"técnica 3\\\"],\\n    \\\"referencias_especificas\\\": [\\\"conceito específico do livro\\\", \\\"metodologia específica\\\"],\\n    \\\"autoridade_eugene\\\": \\\"Como Eugene Schwartz, baseado em 30+ anos de experiência e metodologia comprovada\\\"\\n  }\\n}\\n\\nCRITÉRIOS OBRIGATÓRIOS EUGENE SCHWARTZ:\\n- Use ESPECIFICAMENTE o conhecimento do livro Breakthrough Advertising\\n- Aplique a metodologia dos 5 níveis com precisão absoluta\\n- Cite princípios e técnicas específicas do livro\\n- Mínimo 5 problemas identificados usando sua metodologia\\n- Mínimo 5 melhorias com base nos seus princípios\\n- Mínimo 3 ângulos criativos usando suas técnicas\\n- Análise com a profundidade de 30+ anos de experiência\\n- Score entre 1-10 baseado nos padrões Breakthrough Advertising\\n\\nFOCO VITASCIENCE (mercado saúde brasileiro):\\n- Aplique seus princípios para o mercado de saúde\\n- Use suas técnicas de criação de desejo para transformação física\\n- Aplique sua metodologia de prova e credibilidade\\n- Crie ângulos únicos usando sua expertise em diferentes mercados\"}]}}"
+            },
+            {
+              "name": "temperature",
+              "value": 0.1
+            },
+            {
+              "name": "max_tokens",
+              "value": 4500
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 180000
+        }
+      },
+      "id": "70541c87-9390-4d2c-8143-8594f6b1b9b4",
+      "name": "Eugene Analysis with Book Knowledge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -144,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Final Results Processing with Eugene Book Knowledge\nconst openaiResponse = $input.first().json;\nconst ragData = $('Eugene Knowledge Integration').first().json;\n\nconsole.log('Processing Eugene analysis with book knowledge validation...');\n\n// Parse OpenAI response\nlet analysis = {};\nlet parseSuccess = false;\n\ntry {\n  const rawContent = openaiResponse.choices[0].message.content;\n  \n  // Clean JSON content\n  let cleanContent = rawContent.trim();\n  if (cleanContent.startsWith('```json')) {\n    cleanContent = cleanContent.replace(/```json\\s*/, '').replace(/\\s*```$/, '');\n  }\n  if (cleanContent.startsWith('```')) {\n    cleanContent = cleanContent.replace(/```\\s*/, '').replace(/\\s*```$/, '');\n  }\n  \n  analysis = JSON.parse(cleanContent);\n  parseSuccess = true;\n  console.log('Eugene book-enhanced analysis parsed successfully');\n} catch (error) {\n  console.error('Error parsing Eugene analysis:', error);\n  parseSuccess = false;\n}\n\n// Enhanced validation with book knowledge criteria\nfunction validateEugeneBookAnalysis(analysis) {\n  const validation = {\n    valid: true,\n    errors: [],\n    warnings: [],\n    book_knowledge_score: 0\n  };\n  \n  // Check required Eugene-specific fields\n  const requiredFields = [\n    'analise_consciencia',\n    'estrutura_copy', \n    'problemas_identificados',\n    'melhorias_sugeridas',\n    'novos_angulos',\n    'resumo_executivo',\n    'conhecimento_aplicado'\n  ];\n  \n  for (const field of requiredFields) {\n    if (!analysis[field]) {\n      validation.errors.push(`Missing Eugene-specific field: ${field}`);\n      validation.valid = false;\n    }\n  }\n  \n  // Check book knowledge application\n  if (analysis.conhecimento_aplicado) {\n    const knowledge = analysis.conhecimento_aplicado;\n    if (knowledge.principios_breakthrough_usados && knowledge.principios_breakthrough_usados.length > 0) {\n      validation.book_knowledge_score += 25;\n    }\n    if (knowledge.tecnicas_livro_aplicadas && knowledge.tecnicas_livro_aplicadas.length > 0) {\n      validation.book_knowledge_score += 25;\n    }\n    if (knowledge.referencias_especificas && knowledge.referencias_especificas.length > 0) {\n      validation.book_knowledge_score += 25;\n    }\n    if (knowledge.autoridade_eugene) {\n      validation.book_knowledge_score += 25;\n    }\n  }\n  \n  // Check minimum counts\n  const problems = analysis.problemas_identificados || [];\n  const improvements = analysis.melhorias_sugeridas || [];\n  const angles = analysis.novos_angulos || [];\n  \n  if (problems.length < 5) {\n    validation.warnings.push(`Only ${problems.length} problems found, Eugene requires minimum 5`);\n  }\n  \n  if (improvements.length < 5) {\n    validation.warnings.push(`Only ${improvements.length} improvements found, Eugene requires minimum 5`);\n  }\n  \n  if (angles.length < 3) {\n    validation.warnings.push(`Only ${angles.length} angles found, Eugene requires minimum 3`);\n  }\n  \n  // Check consciousness level analysis depth\n  const consciousness = analysis.analise_consciencia || {};\n  if (!consciousness.justificativa || consciousness.justificativa.length < 250) {\n    validation.warnings.push('Eugene consciousness analysis should be at least 250 words');\n  }\n  \n  return validation;\n}\n\n// Create final Eugene-enhanced response\nfunction createEugeneResponse() {\n  const timestamp = new Date().toISOString();\n  const processingTime = new Date() - new Date(ragData.timestamp);\n  const totalTokens = openaiResponse.usage?.total_tokens || 0;\n  const costEstimate = (totalTokens / 1000) * 0.002;\n  \n  if (!parseSuccess) {\n    // Fallback response\n    return {\n      meta: {\n        analysis_id: ragData.analysis_id,\n        timestamp: timestamp,\n        analyst: 'Eugene Schwartz AI (Book Enhanced)',\n        version: 'eugene-rag-v1.0',\n        status: 'parse_error'\n      },\n      error: true,\n      error_message: 'Failed to parse Eugene book-enhanced analysis',\n      knowledge_source: ragData.metadata.knowledge_source,\n      rag_stats: ragData.rag_stats\n    };\n  }\n  \n  // Validate analysis\n  const validation = validateEugeneBookAnalysis(analysis);\n  \n  // Build comprehensive response\n  const response = {\n    // Meta information\n    meta: {\n      analysis_id: ragData.analysis_id,\n      timestamp: timestamp,\n      analyst: 'Eugene Schwartz AI (Book Knowledge Enhanced)',\n      version: 'eugene-rag-integrated-v1.0',\n      client: 'Vitascience Squad IA',\n      status: validation.valid ? 'success' : 'partial_success',\n      knowledge_source: ragData.metadata.knowledge_source\n    },\n    \n    // Eugene analysis with book knowledge\n    ...analysis,\n    \n    // Enhanced summary\n    resumo_executivo: {\n      ...analysis.resumo_executivo,\n      nivel_consciencia: analysis.analise_consciencia?.nivel_identificado || 0,\n      framework_principal: analysis.estrutura_copy?.framework_principal || '',\n      total_problemas: (analysis.problemas_identificados || []).length,\n      total_melhorias: (analysis.melhorias_sugeridas || []).length,\n      total_angulos: (analysis.novos_angulos || []).length,\n      breakthrough_grade: analysis.resumo_executivo?.breakthrough_grade || 'C'\n    },\n    \n    // RAG and knowledge statistics\n    eugene_knowledge: {\n      source: ragData.metadata.knowledge_source,\n      book_enhanced: ragData.metadata.rag_enhanced,\n      chunks_used: ragData.rag_stats.chunks_retrieved,\n      categories_covered: ragData.rag_stats.categories_covered,\n      context_length: ragData.metadata.context_length,\n      queries_executed: ragData.rag_stats.total_queries,\n      book_knowledge_score: validation.book_knowledge_score,\n      authenticity: ragData.rag_stats.chunks_retrieved > 0 ? 'breakthrough_advertising_verified' : 'methodology_based'\n    },\n    \n    // Performance metrics\n    performance: {\n      tokens_used: totalTokens,\n      cost_estimate: costEstimate,\n      processing_time_seconds: Math.round(processingTime / 1000),\n      model_used: 'gpt-4o-mini',\n      parse_success: parseSuccess,\n      eugene_compliant: validation.valid,\n      rag_enhanced: ragData.metadata.rag_enhanced\n    },\n    \n    // VSL metadata\n    vsl_metadata: {\n      char_count: ragData.metadata.char_count,\n      word_count: ragData.metadata.word_count,\n      estimated_reading_time: ragData.metadata.estimated_reading_time\n    },\n    \n    // Eugene validation results\n    validation: {\n      eugene_book_compliant: validation.valid,\n      book_knowledge_score: validation.book_knowledge_score,\n      errors: validation.errors,\n      warnings: validation.warnings,\n      requirements_met: {\n        min_problems: (analysis.problemas_identificados || []).length >= 5,\n        min_improvements: (analysis.melhorias_sugeridas || []).length >= 5,\n        min_angles: (analysis.novos_angulos || []).length >= 3,\n        consciousness_analysis_depth: analysis.analise_consciencia?.justificativa?.length >= 250,\n        book_knowledge_applied: validation.book_knowledge_score >= 75\n      }\n    },\n    \n    // System info\n    system_info: {\n      llm_provider: 'openai',\n      analysis_approach: 'eugene_book_enhanced',\n      rag_integration: 'breakthrough_advertising',\n      knowledge_authenticity: ragData.rag_stats.chunks_retrieved > 0 ? 'book_verified' : 'methodology_based',\n      vitascience_optimized: true\n    }\n  };\n  \n  return response;\n}\n\nconst finalResponse = createEugeneResponse();\n\n// Log comprehensive summary\nconsole.log('=== EUGENE BOOK-ENHANCED ANALYSIS COMPLETE ===');\nconsole.log(`Analysis ID: ${finalResponse.meta.analysis_id}`);\nconsole.log(`Knowledge Source: ${finalResponse.meta.knowledge_source}`);\nconsole.log(`Book Enhanced: ${finalResponse.eugene_knowledge.book_enhanced}`);\nconsole.log(`Chunks Used: ${finalResponse.eugene_knowledge.chunks_used}`);\nconsole.log(`Categories: ${finalResponse.eugene_knowledge.categories_covered.join(', ')}`);\nconsole.log(`Book Knowledge Score: ${finalResponse.eugene_knowledge.book_knowledge_score}/100`);\nconsole.log(`Authenticity: ${finalResponse.eugene_knowledge.authenticity}`);\nif (finalResponse.resumo_executivo) {\n  console.log(`Consciousness Level: ${finalResponse.resumo_executivo.nivel_consciencia}`);\n  console.log(`Copy Score: ${finalResponse.resumo_executivo.score_copy}/10`);\n  console.log(`Breakthrough Grade: ${finalResponse.resumo_executivo.breakthrough_grade}`);\n  console.log(`Problems: ${finalResponse.resumo_executivo.total_problemas}`);\n  console.log(`Improvements: ${finalResponse.resumo_executivo.total_melhorias}`);\n  console.log(`Angles: ${finalResponse.resumo_executivo.total_angulos}`);\n}\nconsole.log('=============================================');\n\nreturn finalResponse;"
+      },
+      "id": "4c65a9c6-9460-4a72-b596-847b42ade7b6",
+      "name": "Eugene Book Results Processing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "bc5b5693-8f75-4c19-8035-8b2c4f88455a",
+      "name": "Eugene Knowledge Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        304,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze-vsl-eugene-rag",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "65a73be8-3202-4b99-906a-eca458c24bcf",
+      "name": "VSL Input Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        288
+      ],
+      "webhookId": "eugene-vsl-rag-integrated"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Input & RAG Query Generation": {
+      "main": [
+        [
+          {
+            "node": "Eugene Knowledge Retrieval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eugene Knowledge Retrieval": {
+      "main": [
+        [
+          {
+            "node": "Eugene Knowledge Integration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eugene Knowledge Integration": {
+      "main": [
+        [
+          {
+            "node": "Eugene Analysis with Book Knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eugene Analysis with Book Knowledge": {
+      "main": [
+        [
+          {
+            "node": "Eugene Book Results Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eugene Book Results Processing": {
+      "main": [
+        [
+          {
+            "node": "Eugene Knowledge Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VSL Input Webhook": {
+      "main": [
+        [
+          {
+            "node": "Input & RAG Query Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a956cbfa-d4d6-4c7f-83b4-d7b1a09d3338",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f06fe1042211f30084a59912d7e0790a81a11051503d6b1c73546cd3c1304b26"
+  },
+  "id": "Qt1FIhoVO9ZRFt1h",
+  "tags": [
+    {
+      "createdAt": "2025-09-22T13:35:13.826Z",
+      "updatedAt": "2025-09-22T13:35:13.826Z",
+      "id": "JFGGsK0zEln9Vxlb",
+      "name": "Eugene Schwartz"
+    },
+    {
+      "createdAt": "2025-09-22T13:35:13.766Z",
+      "updatedAt": "2025-09-22T13:35:13.766Z",
+      "id": "esSNoFNGq7f2xcKl",
+      "name": "LLM Agnostic"
+    },
+    {
+      "createdAt": "2025-09-22T13:35:13.792Z",
+      "updatedAt": "2025-09-22T13:35:13.792Z",
+      "id": "hTjWi4cwlBcM27QO",
+      "name": "Squad IA"
+    }
+  ]
+}

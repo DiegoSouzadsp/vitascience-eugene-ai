@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}Demo - Eugene Schwartz VSL Analyzer{% endblock %}
+
+{% block header %}
+<div class="header">
+    <h1><i class="fas fa-play-circle me-3"></i>Demonstração</h1>
+    <p>Veja a análise em ação com um VSL de exemplo</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 mx-auto">
+        <!-- Demo Introduction -->
+        <div class="alert alert-info mb-4">
+            <h4 class="alert-heading">
+                <i class="fas fa-info-circle me-2"></i>
+                Como funciona a demonstração
+            </h4>
+            <p class="mb-0">
+                Abaixo você encontra um VSL de exemplo típico do mercado de saúde/emagrecimento.
+                Clique em "Analisar Demo" para ver como nossa IA identifica os níveis de consciência,
+                problemas estruturais e sugere melhorias específicas.
+            </p>
+        </div>
+
+        <!-- Sample VSL -->
+        <form method="POST" action="{{ url_for('analyze') }}" id="demoForm">
+            <div class="mb-4">
+                <label for="vsl_text" class="form-label fs-5 fw-bold">
+                    <i class="fas fa-file-text text-primary me-2"></i>
+                    VSL de Exemplo - Produto de Emagrecimento
+                </label>
+                <textarea
+                    class="form-control"
+                    id="vsl_text"
+                    name="vsl_text"
+                    rows="15"
+                    readonly
+                    style="background-color: #f8f9fa;">{{ sample_vsl }}</textarea>
+
+                <input type="hidden" name="analysis_type" value="complete">
+
+                <div class="form-text mt-3">
+                    <i class="fas fa-lightbulb me-1"></i>
+                    <strong>Este é um VSL típico de produto de emagrecimento.</strong>
+                    Nossa análise identificará:
+                    <ul class="mt-2">
+                        <li>Nível de consciência do público-alvo (provavelmente 2-3)</li>
+                        <li>Estrutura narrativa e pontos de conversão</li>
+                        <li>Problemas na abordagem de consciência</li>
+                        <li>Sugestões para melhorar a conversão</li>
+                        <li>Novos ângulos criativos baseados na metodologia Eugene Schwartz</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Analysis Features Preview -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card border-primary h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                            <h6>Consciência</h6>
+                            <small class="text-muted">Nível 2-3 esperado</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card border-success h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-sitemap fa-2x text-success mb-2"></i>
+                            <h6>Estrutura</h6>
+                            <small class="text-muted">Hook > Problema > Solução</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card border-warning h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                            <h6>Problemas</h6>
+                            <small class="text-muted">Mismatch de consciência</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card border-info h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-lightbulb fa-2x text-info mb-2"></i>
+                            <h6>Melhorias</h6>
+                            <small class="text-muted">Educação gradual</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Button -->
+            <div class="text-center">
+                <button type="submit" class="btn btn-success btn-lg px-5" id="demoBtn">
+                    <i class="fas fa-play me-2"></i>
+                    Analisar Demo
+                </button>
+            </div>
+        </form>
+
+        <!-- Expected Results Preview -->
+        <div class="mt-5">
+            <h3 class="text-center mb-4">
+                <i class="fas fa-chart-line text-primary me-2"></i>
+                O que você verá na análise
+            </h3>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="analysis-section">
+                        <h5><i class="fas fa-search text-primary me-2"></i>Análise de Consciência Detalhada</h5>
+                        <ul class="mb-0">
+                            <li>Identificação do nível dominante (2-3)</li>
+                            <li>Estratégias de educação do mercado</li>
+                            <li>Pontos de transição entre níveis</li>
+                            <li>Adequação da abordagem ao público</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="analysis-section">
+                        <h5><i class="fas fa-cogs text-success me-2"></i>Problemas Estruturais</h5>
+                        <ul class="mb-0">
+                            <li>Salto brusco de consciência</li>
+                            <li>Falta de educação sobre o problema</li>
+                            <li>Prova social insuficiente</li>
+                            <li>CTA com baixa urgência</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="analysis-section">
+                        <h5><i class="fas fa-arrow-up text-info me-2"></i>Melhorias Específicas</h5>
+                        <ul class="mb-0">
+                            <li>Melhor educação sobre termogênese</li>
+                            <li>Mais histórias de transformação</li>
+                            <li>Headlines mais específicas</li>
+                            <li>Urgência mais convincente</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="analysis-section">
+                        <h5><i class="fas fa-magic text-purple me-2"></i>Ângulos Criativos</h5>
+                        <ul class="mb-0">
+                            <li>Ângulo "descoberta científica"</li>
+                            <li>Comparação com métodos tradicionais</li>
+                            <li>Foco na frustração com dietas</li>
+                            <li>Autoridade através da ciência</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real Customer Examples -->
+        <div class="mt-5">
+            <div class="alert alert-success">
+                <h5 class="alert-heading">
+                    <i class="fas fa-users me-2"></i>
+                    Casos de Sucesso
+                </h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>E-commerce de Suplementos</strong>
+                        <p class="mb-0 small">Aumento de 34% na conversão após implementar sugestões de consciência</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Infoprodutor de Fitness</strong>
+                        <p class="mb-0 small">Melhoria de 28% no CTR com novos ângulos criativos sugeridos</p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Clínica de Estética</strong>
+                        <p class="mb-0 small">Redução de 45% na taxa de rejeição com estrutura otimizada</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Try Your Own -->
+        <div class="text-center mt-4">
+            <h4 class="mb-3">Quer testar com seu próprio VSL?</h4>
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-edit me-2"></i>
+                Fazer Minha Própria Análise
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const demoBtn = document.getElementById('demoBtn');
+    const form = document.getElementById('demoForm');
+
+    form.addEventListener('submit', function(e) {
+        // Show loading state
+        demoBtn.disabled = true;
+        demoBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div>Analisando Demo...';
+
+        // Create loading overlay
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading text-center mt-4';
+        loadingDiv.innerHTML = `
+            <div class="spinner"></div>
+            <h4>Processando demonstração...</h4>
+            <p class="text-muted">Aplicando metodologia Eugene Schwartz ao VSL de exemplo</p>
+            <div class="progress" style="max-width: 400px; margin: 20px auto;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: 100%"
+                     aria-valuenow="100"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                    Analisando...
+                </div>
+            </div>
+        `;
+
+        form.style.display = 'none';
+        form.parentNode.appendChild(loadingDiv);
+    });
+});
+</script>
+
+<style>
+.text-purple {
+    color: #6f42c1 !important;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--secondary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

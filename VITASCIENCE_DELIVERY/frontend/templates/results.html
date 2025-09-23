@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Resultados da Análise - Eugene Schwartz VSL Analyzer{% endblock %}
+
+{% block header %}
+<div class="header">
+    <h1><i class="fas fa-chart-line me-3"></i>Análise Completa</h1>
+    <p>Resultados baseados na metodologia Eugene Schwartz</p>
+    <div class="row text-center mt-3">
+        <div class="col-md-4">
+            <div class="bg-white bg-opacity-20 rounded p-2">
+                <strong>Tempo de Análise</strong><br>
+                {{ "%.2f"|format(response_time) }}s
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="bg-white bg-opacity-20 rounded p-2">
+                <strong>Palavras Analisadas</strong><br>
+                {{ original_text.split()|length }}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="bg-white bg-opacity-20 rounded p-2">
+                <strong>Data/Hora</strong><br>
+                {{ analysis.metadata.timestamp[:19] if analysis.metadata and analysis.metadata.timestamp else 'N/A' }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Eugene Summary Score -->
+{% if analysis.resumo_executivo %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-star me-2"></i>Breakthrough Grade
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-primary">{{ analysis.resumo_executivo.breakthrough_grade or 'C' }}</h2>
+                <p class="mb-0 text-muted">Nota Eugene Schwartz</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-brain me-2"></i>Consciência
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-success">Nível {{ analysis.resumo_executivo.nivel_consciencia or 'N/A' }}</h2>
+                <p class="mb-0 text-muted">5 Níveis Eugene</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-book me-2"></i>Knowledge Score
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-info">{{ analysis.eugene_knowledge.book_knowledge_score if analysis.eugene_knowledge else 'N/A' }}/100</h2>
+                <p class="mb-0 text-muted">Livro Aplicado</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Consciousness Analysis -->
+{% if analysis.analise_consciencia %}
+<div class="analysis-section">
+    <h3><i class="fas fa-brain text-primary me-2"></i>Análise de Consciência</h3>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Nível Identificado</h5>
+                </div>
+                <div class="card-body">
+                    <h2 class="text-center text-info">
+                        Nível {{ analysis.analise_consciencia.nivel_identificado or 'N/A' }}
+                    </h2>
+                    <p class="text-center mb-2">
+                        <strong>Confiança:</strong> {{ "%.0f"|format((analysis.analise_consciencia.confianca or 0) * 100) }}%
+                    </p>
+                    {% if analysis.analise_consciencia.nivel_ideal_sugerido %}
+                    <p class="text-center text-warning">
+                        <strong>Sugerido:</strong> Nível {{ analysis.analise_consciencia.nivel_ideal_sugerido }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Indicadores Textuais</h5>
+                </div>
+                <div class="card-body">
+                    {% if analysis.analise_consciencia.indicadores_textuais %}
+                        <ul class="list-unstyled mb-0">
+                        {% for indicador in analysis.analise_consciencia.indicadores_textuais %}
+                            <li class="mb-2">
+                                <i class="fas fa-quote-left text-success me-2"></i>
+                                "{{ indicador }}"
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="mb-0 text-muted">Trechos identificados na análise</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if analysis.analise_consciencia.justificativa %}
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Justificativa Eugene Schwartz</h5>
+        </div>
+        <div class="card-body">
+            <p class="mb-0">{{ analysis.analise_consciencia.justificativa }}</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Structure Analysis -->
+{% if analysis.estrutura_copy %}
+<div class="analysis-section">
+    <h3><i class="fas fa-sitemap text-success me-2"></i>Análise Estrutural</h3>
+    <div class="card">
+        <div class="card-body">
+            <pre class="bg-light p-3 rounded">{{ analysis.estrutura_copy | tojson(indent=2) }}</pre>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Problems Identified -->
+{% if analysis.problemas_identificados %}
+<div class="analysis-section">
+    <h3><i class="fas fa-exclamation-triangle text-warning me-2"></i>Problemas Identificados ({{ analysis.problemas_identificados|length }})</h3>
+
+    <div class="row">
+        {% for problema in analysis.problemas_identificados %}
+        <div class="col-md-6 mb-3">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-bug me-2"></i>{{ problema.categoria or 'PROBLEMA' }}
+                        {% if problema.severidade %}
+                        <span class="badge bg-danger ms-2">{{ problema.severidade }}/10</span>
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>{{ problema.problema }}</strong></p>
+                    {% if problema.localizacao %}
+                    <p class="mb-2 text-muted"><em>Local:</em> {{ problema.localizacao }}</p>
+                    {% endif %}
+                    {% if problema.por_que_problema %}
+                    <p class="mb-2">{{ problema.por_que_problema }}</p>
+                    {% endif %}
+                    {% if problema.impacto_conversao %}
+                    <small class="text-danger"><strong>Impacto:</strong> {{ problema.impacto_conversao }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Improvements Suggested -->
+{% if analysis.melhorias_sugeridas %}
+<div class="analysis-section">
+    <h3><i class="fas fa-lightbulb text-info me-2"></i>Melhorias Sugeridas ({{ analysis.melhorias_sugeridas|length }})</h3>
+
+    <div class="row">
+        {% for melhoria in analysis.melhorias_sugeridas %}
+        <div class="col-md-6 mb-3">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">{{ melhoria.problema_resolvido or 'Melhoria' }}</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>{{ melhoria.melhoria }}</strong></p>
+                    {% if melhoria.metodologia_eugene %}
+                    <p class="mb-2 text-primary"><em>Metodologia:</em> {{ melhoria.metodologia_eugene }}</p>
+                    {% endif %}
+                    {% if melhoria.implementacao %}
+                    <p class="mb-2"><strong>Como implementar:</strong> {{ melhoria.implementacao }}</p>
+                    {% endif %}
+                    {% if melhoria.exemplo_reescrito %}
+                    <div class="bg-light p-2 rounded mb-2">
+                        <small><strong>Exemplo:</strong> "{{ melhoria.exemplo_reescrito }}"</small>
+                    </div>
+                    {% endif %}
+                    {% if melhoria.impacto_esperado %}
+                    <small class="text-success"><strong>Impacto:</strong> {{ melhoria.impacto_esperado }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Creative Angles -->
+{% if analysis.novos_angulos %}
+<div class="analysis-section">
+    <h3><i class="fas fa-magic text-purple me-2"></i>Novos Ângulos Criativos ({{ analysis.novos_angulos|length }})</h3>
+
+    <div class="row">
+        {% for angulo in analysis.novos_angulos %}
+        <div class="col-md-6 mb-3">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        {{ angulo.nome_angulo or 'Ângulo Criativo' }}
+                        <span class="badge bg-light text-dark ms-2">Nível {{ angulo.nivel_consciencia_alvo }}</span>
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>{{ angulo.abordagem }}</strong></p>
+                    {% if angulo.headline_sugerida %}
+                    <div class="bg-warning bg-opacity-10 p-2 rounded mb-2">
+                        <strong>Headline:</strong> "{{ angulo.headline_sugerida }}"
+                    </div>
+                    {% endif %}
+                    {% if angulo.primeiro_paragrafo %}
+                    <div class="bg-light p-2 rounded mb-2">
+                        <small><strong>Abertura:</strong> {{ angulo.primeiro_paragrafo[:150] }}{% if angulo.primeiro_paragrafo|length > 150 %}...{% endif %}</small>
+                    </div>
+                    {% endif %}
+                    {% if angulo.diferencial %}
+                    <p class="mb-2 text-primary"><em>Diferencial:</em> {{ angulo.diferencial }}</p>
+                    {% endif %}
+                    {% if angulo.publico_ideal %}
+                    <small class="text-muted"><strong>Público:</strong> {{ angulo.publico_ideal }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- RAG Knowledge Info -->
+{% if analysis.eugene_knowledge %}
+<div class="analysis-section">
+    <h3><i class="fas fa-book text-success me-2"></i>Conhecimento Eugene Schwartz Aplicado</h3>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">RAG System Stats</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1"><strong>Fonte:</strong> {{ analysis.eugene_knowledge.source or 'N/A' }}</p>
+                    <p class="mb-1"><strong>Chunks usados:</strong> {{ analysis.eugene_knowledge.chunks_used or 0 }}</p>
+                    <p class="mb-1"><strong>Categorias:</strong> {{ analysis.eugene_knowledge.categories_covered|join(', ') if analysis.eugene_knowledge.categories_covered else 'N/A' }}</p>
+                    <p class="mb-0"><strong>Autenticidade:</strong> {{ analysis.eugene_knowledge.authenticity or 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">Validação Sistema</h6>
+                </div>
+                <div class="card-body">
+                    {% if analysis.validation %}
+                    <p class="mb-1"><strong>Eugene Compliant:</strong>
+                        {% if analysis.validation.eugene_book_compliant %}
+                            <span class="text-success">✓ Sim</span>
+                        {% else %}
+                            <span class="text-danger">✗ Não</span>
+                        {% endif %}
+                    </p>
+                    <p class="mb-1"><strong>Livro Aplicado:</strong>
+                        {% if analysis.validation.requirements_met.book_knowledge_applied %}
+                            <span class="text-success">✓ Sim</span>
+                        {% else %}
+                            <span class="text-warning">⚠ Parcial</span>
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    <p class="mb-0"><strong>Sistema:</strong> {{ analysis.system_info.analysis_approach if analysis.system_info else 'Eugene Enhanced' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Original Text Section -->
+<div class="analysis-section">
+    <h3><i class="fas fa-file-text text-secondary me-2"></i>Texto Original Analisado</h3>
+    <div class="card">
+        <div class="card-body">
+            <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">
+                <pre class="mb-0">{{ original_text }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('index') }}" class="btn btn-primary me-3">
+        <i class="fas fa-plus me-2"></i>
+        Nova Análise
+    </a>
+    <button onclick="window.print()" class="btn btn-outline-secondary me-3">
+        <i class="fas fa-print me-2"></i>
+        Imprimir Relatório
+    </button>
+    <button onclick="downloadJSON()" class="btn btn-outline-info">
+        <i class="fas fa-download me-2"></i>
+        Baixar JSON
+    </button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function downloadJSON() {
+    const analysis = {{ analysis | tojson }};
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(analysis, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "vsl_analysis_" + new Date().getTime() + ".json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+// Print styling
+window.addEventListener('beforeprint', function() {
+    document.body.classList.add('printing');
+});
+
+window.addEventListener('afterprint', function() {
+    document.body.classList.remove('printing');
+});
+</script>
+
+<style>
+@media print {
+    .navbar, .footer, .btn {
+        display: none !important;
+    }
+
+    .main-container {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    .analysis-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
+
+.text-purple {
+    color: #6f42c1 !important;
+}
+</style>
+{% endblock %}
