@@ -24,11 +24,11 @@ Sistema de análise de Video Sales Letters (VSLs) baseado na metodologia complet
 ### **1. Configuração**
 ```bash
 # Clone o repositório
-git clone [repository-url]
+git clone https://github.com/DiegoSouzadsp/vitascience-eugene-ai.git
 cd vitascience-eugene-ai
 
 # Configure variáveis de ambiente
-cp VITASCIENCE_DELIVERY/.env.example .env
+cp .env.example .env
 # Edite .env com suas chaves de API
 ```
 
