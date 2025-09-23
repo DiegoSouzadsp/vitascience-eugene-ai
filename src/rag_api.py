@@ -1,37 +1,34 @@
+#!/usr/bin/env python3
 """
-Eugene Schwartz RAG API
-FastAPI service para sistema de Retrieval-Augmented Generation
-Especializado em análise de copywriting com metodologia Eugene Schwartz
+RAG API Service - Eugene Schwartz VSL Analyzer
+FastAPI service for retrieving relevant chunks from Eugene Schwartz book
 """
 
 import os
+import json
 import asyncio
-import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+import psycopg2
+import numpy as np
+from openai import OpenAI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-import uvicorn
 
-import sys
-import os
-sys.path.append(os.path.dirname(__file__))
-from rag_query_service import RAGQueryService, get_rag_query_service
+# Configuration
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@postgres-vector:5432/eugene_rag')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Initialize OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-# Initialize FastAPI app
+# FastAPI app
 app = FastAPI(
     title="Eugene Schwartz RAG API",
-    description="Sistema RAG especializado na metodologia dos 5 níveis de consciência",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    description="Retrieval-Augmented Generation API for Eugene Schwartz VSL Analysis",
+    version="1.0.0"
 )
 
 # CORS middleware
@@ -43,402 +40,270 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global RAG query service instance
-rag_query_service: Optional[RAGQueryService] = None
+# Pydantic models
+class RAGQuery(BaseModel):
+    query: str = Field(..., description="Search query for RAG retrieval")
+    max_results: int = Field(default=5, ge=1, le=20, description="Maximum number of results")
+    min_similarity: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
+    category: Optional[str] = Field(default=None, description="Filter by category")
 
-# Pydantic models for API
-
-class QueryRequest(BaseModel):
-    """Request model para queries de retrieval"""
-    query: str = Field(..., description="Query de busca no conhecimento Eugene Schwartz")
-    category: Optional[str] = Field(None, description="Categoria específica para filtrar")
-    max_results: int = Field(5, description="Número máximo de resultados", ge=1, le=20)
-
-class RetrievalResponse(BaseModel):
-    """Response model para resultados de retrieval"""
+class RAGChunk(BaseModel):
     content: str
-    similarity_score: float
     category: str
-    chapter: str
-    metadata: Dict[str, Any]
+    chapter: Optional[str] = None
+    similarity_score: float
+    metadata: Dict[str, Any] = {}
 
-class ConsciousnessLevelRequest(BaseModel):
-    """Request para análise de nível de consciência"""
-    copy_text: str = Field(..., description="Texto da copy para análise")
-    consciousness_level: Optional[int] = Field(None, description="Nível específico (1-5)", ge=1, le=5)
+class RAGResponse(BaseModel):
+    chunks: List[RAGChunk]
+    query: str
+    total_found: int
+    processing_time_ms: float
+    timestamp: str
 
-class FrameworkRequest(BaseModel):
-    """Request para guidance de frameworks"""
-    copy_type: str = Field(..., description="Tipo de copy (VSL, email, sales page, etc.)")
-    industry: Optional[str] = Field(None, description="Indústria específica (health, tech, etc.)")
-
-class ImprovementRequest(BaseModel):
-    """Request para técnicas de melhoria"""
-    problem_area: str = Field(..., description="Área problema identificada na copy")
-    current_level: Optional[int] = Field(None, description="Nível atual de consciência do mercado")
-
-class HealthCheckResponse(BaseModel):
-    """Response model para health check"""
-    status: str
-    total_chunks: int
-    category_distribution: Dict[str, int]
-    database_connection: bool
-    embedding_model: str
-    response_time_ms: float
-
-class ProcessingStatus(BaseModel):
-    """Status do processamento do livro"""
-    status: str
-    progress: float
-    message: str
-    estimated_completion: Optional[str] = None
-
-# Dependency to get RAG query service
-async def get_rag_service() -> RAGQueryService:
-    """Dependency para obter instância do serviço RAG"""
-    global rag_query_service
-    if rag_query_service is None:
-        rag_query_service = await get_rag_query_service()
-    return rag_query_service
-
-# API Routes
-
-@app.on_event("startup")
-async def startup_event():
-    """Inicialização do sistema na startup"""
-    global rag_query_service
-
-    logger.info("Initializing Eugene Schwartz RAG Query Service...")
-
+# Database connection
+def get_db_connection():
+    """Get database connection"""
     try:
-        rag_query_service = await get_rag_query_service()
-        logger.info("RAG Query Service initialized successfully")
-
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
     except Exception as e:
-        logger.error(f"Failed to initialize RAG Query Service: {e}")
+        raise HTTPException(status_code=500, f"Database connection failed: {str(e)}")
 
-@app.get("/health", response_model=HealthCheckResponse)
-async def health_check(rag: RAGQueryService = Depends(get_rag_service)):
-    """
-    Health check do sistema RAG
-    """
-    import time
-    start_time = time.time()
+# Generate embedding
+async def generate_embedding(text: str) -> List[float]:
+    """Generate embedding for text using OpenAI"""
+    if not client:
+        raise HTTPException(status_code=500, "OpenAI API key not configured")
 
     try:
-        # Use new health check method
-        health_info = await rag.health_check()
-        response_time = (time.time() - start_time) * 1000
-
-        return HealthCheckResponse(
-            status=health_info.get('status', 'unknown'),
-            total_chunks=health_info.get('total_records', 0),
-            category_distribution=health_info.get('category_distribution', {}),
-            database_connection=health_info.get('database_connected', False),
-            embedding_model=f"llm_agnostic_{health_info.get('primary_llm', 'unknown')}",
-            response_time_ms=response_time
+        response = client.embeddings.create(
+            model="text-embedding-ada-002",
+            input=text.replace("\\n", " ")
         )
-
+        return response.data[0].embedding
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, f"Failed to generate embedding: {str(e)}")
 
-@app.post("/retrieve/consciousness", response_model=List[RetrievalResponse])
-async def retrieve_consciousness_context(
-    request: ConsciousnessLevelRequest,
-    rag: RAGQueryService = Depends(get_rag_service)
-):
-    """
-    Busca contexto específico para análise de níveis de consciência
-    """
+# RAG retrieval function
+async def retrieve_chunks(
+    query: str,
+    max_results: int = 5,
+    min_similarity: float = 0.7,
+    category: Optional[str] = None
+) -> List[RAGChunk]:
+    """Retrieve relevant chunks from Eugene Schwartz book"""
+
+    start_time = datetime.now()
+
+    # Generate query embedding
+    query_embedding = await generate_embedding(query)
+
+    # Database query
+    conn = get_db_connection()
     try:
-        results = await rag.query_consciousness_levels(
-            request.copy_text,
-            max_results=5
-        )
+        cur = conn.cursor()
 
-        return [
-            RetrievalResponse(
-                content=result.content,
-                similarity_score=result.similarity_score,
-                category=result.category,
-                chapter=result.chapter,
-                metadata=result.metadata
-            )
-            for result in results
-        ]
+        # Build query with optional category filter
+        base_query = """
+            SELECT
+                content,
+                metadata,
+                embedding <=> %s::vector as similarity_score
+            FROM eugene_embeddings
+        """
 
-    except Exception as e:
-        logger.error(f"Consciousness retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
+        params = [str(query_embedding)]
 
-@app.post("/retrieve/frameworks", response_model=List[RetrievalResponse])
-async def retrieve_framework_guidance(
-    request: FrameworkRequest,
-    rag: RAGQueryService = Depends(get_rag_service)
-):
-    """
-    Busca guidance sobre frameworks de copywriting
-    """
+        if category:
+            base_query += " WHERE metadata->>'category' = %s"
+            params.append(category)
+
+        base_query += """
+            ORDER BY embedding <=> %s::vector
+            LIMIT %s
+        """
+        params.extend([str(query_embedding), max_results * 2])  # Get more for filtering
+
+        cur.execute(base_query, params)
+        results = cur.fetchall()
+
+        chunks = []
+        for content, metadata_json, similarity_score in results:
+            # Convert similarity distance to similarity score
+            similarity = 1 - similarity_score
+
+            if similarity >= min_similarity:
+                metadata = json.loads(metadata_json) if metadata_json else {}
+
+                chunk = RAGChunk(
+                    content=content,
+                    category=metadata.get('category', 'general'),
+                    chapter=metadata.get('chapter'),
+                    similarity_score=similarity,
+                    metadata=metadata
+                )
+                chunks.append(chunk)
+
+                if len(chunks) >= max_results:
+                    break
+
+        return chunks
+
+    finally:
+        conn.close()
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
     try:
-        copy_type_query = f"{request.copy_type}"
-        if request.industry:
-            copy_type_query += f" {request.industry}"
-
-        results = await rag.query_frameworks(copy_type_query, max_results=3)
-
-        return [
-            RetrievalResponse(
-                content=result.content,
-                similarity_score=result.similarity_score,
-                category=result.category,
-                chapter=result.chapter,
-                metadata=result.metadata
-            )
-            for result in results
-        ]
-
-    except Exception as e:
-        logger.error(f"Framework retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
-
-@app.post("/retrieve/improvements", response_model=List[RetrievalResponse])
-async def retrieve_improvement_techniques(
-    request: ImprovementRequest,
-    rag: RAGQueryService = Depends(get_rag_service)
-):
-    """
-    Busca técnicas específicas para melhorias identificadas
-    """
-    try:
-        problem_query = request.problem_area
-        if request.current_level:
-            problem_query += f" consciousness level {request.current_level}"
-
-        results = await rag.query_techniques(problem_query, max_results=4)
-
-        return [
-            RetrievalResponse(
-                content=result.content,
-                similarity_score=result.similarity_score,
-                category=result.category,
-                chapter=result.chapter,
-                metadata=result.metadata
-            )
-            for result in results
-        ]
-
-    except Exception as e:
-        logger.error(f"Improvement retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
-
-@app.post("/retrieve/general", response_model=List[RetrievalResponse])
-async def general_retrieval(
-    request: QueryRequest,
-    rag: RAGQueryService = Depends(get_rag_service)
-):
-    """
-    Busca geral no conhecimento Eugene Schwartz
-    """
-    try:
-        # Use general query method
-        results = await rag.query_by_category(request.query, None, request.max_results)
-
-        # Limit results
-        results = results[:request.max_results]
-
-        return [
-            RetrievalResponse(
-                content=result.content,
-                similarity_score=result.similarity_score,
-                category=result.category,
-                chapter=result.chapter,
-                metadata=result.metadata
-            )
-            for result in results
-        ]
-
-    except Exception as e:
-        logger.error(f"General retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
-
-@app.post("/process-book", response_model=ProcessingStatus)
-async def process_eugene_book(
-    background_tasks: BackgroundTasks,
-    md_path: str = "docs/breakthrough_advertising.md",
-    rag: RAGQueryService = Depends(get_rag_service)
-):
-    """
-    Processa o livro Eugene Schwartz do arquivo MD
-    """
-    try:
-        full_path = os.path.join(r"D:\Projetos\vitascience-eugene-ai", md_path)
-        if not os.path.exists(full_path):
-            raise HTTPException(status_code=404, detail=f"MD file not found at: {full_path}")
-
-        # Start processing in background
-        background_tasks.add_task(rag.process_book, full_path)
-
-        return ProcessingStatus(
-            status="started",
-            progress=0.0,
-            message="Eugene Schwartz book processing started",
-            estimated_completion="3-5 minutes with text-embedding-3-small"
-        )
-
-    except Exception as e:
-        logger.error(f"Book processing initiation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
-
-@app.get("/categories")
-async def get_categories(rag: RAGQueryService = Depends(get_rag_service)):
-    """
-    Retorna categorias disponíveis no sistema
-    """
-    return {
-        "categories": ['consciousness_theory', 'frameworks', 'techniques', 'examples', 'evaluation'],
-        "description": "Categorias baseadas na metodologia Eugene Schwartz"
-    }
-
-@app.get("/stats")
-async def get_system_stats(rag: RAGQueryService = Depends(get_rag_service)):
-    """
-    Estatísticas do sistema RAG
-    """
-    try:
-        stats = await rag.health_check()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM eugene_embeddings")
+        count = cur.fetchone()[0]
+        conn.close()
 
         return {
-            "total_chunks": stats.get('total_records', 0),
-            "category_distribution": stats.get('category_distribution', {}),
-            "primary_llm": stats.get('primary_llm', 'unknown'),
-            "llm_status": stats.get('llm_status', 'unknown'),
-            "configuration": {
-                "service_type": "llm_agnostic_rag_query",
-                "embedding_model": f"llm_agnostic_{stats.get('primary_llm', 'unknown')}",
-                "database_connected": stats.get('database_connected', False)
-            }
-        }
-
-    except Exception as e:
-        logger.error(f"Stats retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats failed: {str(e)}")
-
-# Error handlers
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request, exc):
-    """Handler geral para exceções"""
-    logger.error(f"Unhandled exception: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Internal server error",
-            "detail": str(exc),
+            "status": "healthy",
+            "database": "connected",
+            "embeddings_count": count,
+            "openai_configured": bool(OPENAI_API_KEY),
             "timestamp": datetime.now().isoformat()
         }
-    )
+    except Exception as e:
+        raise HTTPException(status_code=500, f"Health check failed: {str(e)}")
 
-# Test endpoints for development
-
-class ConsciousnessLevelQueryRequest(BaseModel):
-    """Request para busca por nível de consciência"""
-    level: int = Field(..., description="Nível de consciência (1-5)", ge=1, le=5)
-    query: str = Field("", description="Query adicional para refinar busca")
-    max_results: int = Field(5, description="Número máximo de resultados", ge=1, le=10)
-
-@app.post("/retrieve/consciousness-level", response_model=List[RetrievalResponse])
-async def retrieve_by_consciousness_level(
-    request: ConsciousnessLevelQueryRequest,
-    rag: RAGQueryService = Depends(get_rag_service)
+# Generic retrieve endpoint
+@app.post("/retrieve/{category}")
+async def retrieve_by_category(
+    category: str,
+    query_data: RAGQuery
 ):
-    """
-    Busca específica por nível de consciência (1-5)
-    """
-    try:
-        results = await rag.query_consciousness_levels(request.query, request.max_results)
+    """Retrieve chunks by category with query"""
 
-        return [
-            RetrievalResponse(
-                content=result.content,
-                similarity_score=result.similarity_score,
-                category=result.category,
-                chapter=result.chapter,
-                metadata=result.metadata
-            )
-            for result in results
-        ]
+    start_time = datetime.now()
+
+    try:
+        chunks = await retrieve_chunks(
+            query=query_data.query,
+            max_results=query_data.max_results,
+            min_similarity=query_data.min_similarity,
+            category=category
+        )
+
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+
+        response = RAGResponse(
+            chunks=chunks,
+            query=query_data.query,
+            total_found=len(chunks),
+            processing_time_ms=processing_time,
+            timestamp=datetime.now().isoformat()
+        )
+
+        return response
 
     except Exception as e:
-        logger.error(f"Consciousness level retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, f"Retrieval failed: {str(e)}")
 
-@app.get("/test/embeddings")
-async def test_embeddings(
-    text: str = "Test embedding generation",
-    rag: RAGQueryService = Depends(get_rag_service)
-):
-    """
-    Testa geração de embeddings
-    """
+# Consciousness-specific endpoint
+@app.post("/retrieve/consciousness")
+async def retrieve_consciousness(query_data: RAGQuery):
+    """Retrieve consciousness-related chunks"""
+    return await retrieve_by_category("consciousness_theory", query_data)
+
+# Frameworks-specific endpoint
+@app.post("/retrieve/frameworks")
+async def retrieve_frameworks(query_data: RAGQuery):
+    """Retrieve framework-related chunks"""
+    return await retrieve_by_category("copy_frameworks", query_data)
+
+# Techniques-specific endpoint
+@app.post("/retrieve/techniques")
+async def retrieve_techniques(query_data: RAGQuery):
+    """Retrieve technique-related chunks"""
+    return await retrieve_by_category("techniques", query_data)
+
+# Examples-specific endpoint
+@app.post("/retrieve/examples")
+async def retrieve_examples(query_data: RAGQuery):
+    """Retrieve example-related chunks"""
+    return await retrieve_by_category("examples", query_data)
+
+# Evaluation-specific endpoint
+@app.post("/retrieve/evaluation")
+async def retrieve_evaluation(query_data: RAGQuery):
+    """Retrieve evaluation-related chunks"""
+    return await retrieve_by_category("evaluation", query_data)
+
+# General search endpoint
+@app.post("/search")
+async def search_all(query_data: RAGQuery):
+    """Search across all categories"""
+
+    start_time = datetime.now()
+
     try:
-        embedding = await rag.embedder.generate_embedding(text)
+        chunks = await retrieve_chunks(
+            query=query_data.query,
+            max_results=query_data.max_results,
+            min_similarity=query_data.min_similarity,
+            category=query_data.category
+        )
+
+        processing_time = (datetime.now() - start_time).total_seconds() * 1000
+
+        response = RAGResponse(
+            chunks=chunks,
+            query=query_data.query,
+            total_found=len(chunks),
+            processing_time_ms=processing_time,
+            timestamp=datetime.now().isoformat()
+        )
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, f"Search failed: {str(e)}")
+
+# Statistics endpoint
+@app.get("/stats")
+async def get_stats():
+    """Get RAG system statistics"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Total chunks
+        cur.execute("SELECT COUNT(*) FROM eugene_embeddings")
+        total_chunks = cur.fetchone()[0]
+
+        # Chunks by category
+        cur.execute("""
+            SELECT
+                metadata->>'category' as category,
+                COUNT(*) as count
+            FROM eugene_embeddings
+            WHERE metadata->>'category' IS NOT NULL
+            GROUP BY metadata->>'category'
+            ORDER BY count DESC
+        """)
+        categories = dict(cur.fetchall())
+
+        conn.close()
 
         return {
-            "text": text,
-            "embedding_size": len(embedding) if embedding else 0,
-            "embedding_preview": embedding[:5] if embedding else None,
-            "success": embedding is not None
+            "total_chunks": total_chunks,
+            "categories": categories,
+            "database_url": DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else "configured",
+            "openai_configured": bool(OPENAI_API_KEY),
+            "timestamp": datetime.now().isoformat()
         }
 
     except Exception as e:
-        logger.error(f"Embedding test failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Embedding test failed: {str(e)}")
-
-@app.get("/test/database")
-async def test_database_simple(rag: RAGQueryService = Depends(get_rag_service)):
-    """
-    Testa busca simples no banco sem embeddings
-    """
-    try:
-        session = rag.Session()
-
-        result = session.execute(text("""
-            SELECT content, category, chapter
-            FROM eugene_knowledge
-            WHERE content ILIKE '%consciousness%'
-            LIMIT 3
-        """))
-
-        results = []
-        for row in result:
-            results.append({
-                "content": row.content[:200] + "..." if len(row.content) > 200 else row.content,
-                "category": row.category,
-                "chapter": row.chapter
-            })
-
-        session.close()
-
-        return {
-            "total_found": len(results),
-            "results": results,
-            "success": True
-        }
-
-    except Exception as e:
-        logger.error(f"Database test failed: {e}")
-        return {
-            "error": str(e),
-            "success": False
-        }
+        raise HTTPException(status_code=500, f"Stats failed: {str(e)}")
 
 if __name__ == "__main__":
-    # Run the API server
-    uvicorn.run(
-        "rag_api:app",
-        host="0.0.0.0",
-        port=int(os.getenv("RAG_API_PORT", 8000)),
-        reload=True,
-        log_level="info"
-    )
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Eugene Schwartz VSL Analyzer - Home{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Introduction -->
+        <div class="text-center mb-4">
+            <h2 class="mb-3">
+                <i class="fas fa-magic text-primary me-2"></i>
+                Analise seu VSL com Inteligência Artificial
+            </h2>
+            <p class="lead text-muted">
+                Análise completa usando conhecimento real do livro "Breakthrough Advertising" de Eugene Schwartz.
+                Nossa IA com RAG dinâmico identifica o nível de consciência, problemas estruturais,
+                e gera melhorias acionáveis baseadas na metodologia original.
+            </p>
+        </div>
+
+        <!-- VSL Analysis Form -->
+        <form method="POST" action="{{ url_for('analyze') }}" id="vslForm">
+            <div class="mb-4">
+                <label for="vsl_text" class="form-label fs-5 fw-bold">
+                    <i class="fas fa-file-text text-primary me-2"></i>
+                    Texto do seu VSL
+                </label>
+                <textarea
+                    class="form-control"
+                    id="vsl_text"
+                    name="vsl_text"
+                    rows="12"
+                    placeholder="Cole aqui o texto completo do seu Video Sales Letter...
+
+Exemplo:
+Você já se perguntou por que algumas pessoas conseguem emagrecer facilmente enquanto outras lutam para perder poucos quilos?
+
+A resposta está em um segredo descoberto há mais de 200 anos por um químico francês chamado Antoine Lavoisier..."
+                    required></textarea>
+                <div class="form-text">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Mínimo de 100 caracteres. Quanto mais completo o texto, melhor será a análise.
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Caracteres: <span id="charCount">0</span> |
+                        Palavras: <span id="wordCount">0</span> |
+                        Tempo de leitura: <span id="readingTime">0 min</span>
+                    </small>
+                </div>
+            </div>
+
+            <!-- Análise Completa Eugene Schwartz sempre selecionada -->
+            <input type="hidden" name="analysis_type" value="complete">
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary btn-lg px-5" id="analyzeBtn">
+                    <i class="fas fa-search me-2"></i>
+                    Analisar VSL
+                </button>
+            </div>
+        </form>
+
+        <!-- Features Section -->
+        <div class="row mt-5">
+            <div class="col-md-6 mb-4">
+                <div class="analysis-section">
+                    <h3><i class="fas fa-brain text-primary me-2"></i>5 Níveis de Consciência</h3>
+                    <p class="mb-0">Identifica em que nível de consciência seu público está e como adequar sua mensagem para máxima conversão.</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="analysis-section">
+                    <h3><i class="fas fa-structure text-success me-2"></i>Análise Estrutural</h3>
+                    <p class="mb-0">Avalia a sequência lógica, pontos de tensão e elementos essenciais do seu VSL.</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="analysis-section">
+                    <h3><i class="fas fa-exclamation-triangle text-warning me-2"></i>Identificação de Problemas</h3>
+                    <p class="mb-0">Detecta falhas específicas na consciência, estrutura e copywriting que podem estar prejudicando suas conversões.</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="analysis-section">
+                    <h3><i class="fas fa-rocket text-info me-2"></i>Sugestões de Melhoria</h3>
+                    <p class="mb-0">Recebe melhorias acionáveis e novos ângulos criativos baseados na metodologia Eugene Schwartz.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Buttons -->
+        <div class="text-center mt-4">
+            <a href="{{ url_for('demo') }}" class="btn btn-outline-primary me-3">
+                <i class="fas fa-play me-2"></i>
+                Demo com VSL Vitascience
+            </a>
+            <button onclick="loadVitascienceVSL()" class="btn btn-success">
+                <i class="fas fa-magic me-2"></i>
+                Carregar VSL Vitascience Agora
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const vslTextarea = document.getElementById('vsl_text');
+    const charCount = document.getElementById('charCount');
+    const wordCount = document.getElementById('wordCount');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const form = document.getElementById('vslForm');
+
+    // Update character and word count
+    function updateCounts() {
+        const text = vslTextarea.value;
+        const chars = text.length;
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+
+        charCount.textContent = chars;
+        wordCount.textContent = words;
+
+        // Enable/disable button based on minimum length
+        if (chars < 100) {
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Mínimo 100 caracteres';
+        } else {
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-search me-2"></i>Analisar VSL';
+        }
+    }
+
+    // Form submission handling
+    form.addEventListener('submit', function(e) {
+        const text = vslTextarea.value.trim();
+
+        if (text.length < 100) {
+            e.preventDefault();
+            alert('Por favor, insira pelo menos 100 caracteres no texto do VSL.');
+            return;
+        }
+
+        // Show loading state
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2" role="status"></div>Analisando...';
+
+        // Create loading overlay
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading';
+        loadingDiv.innerHTML = `
+            <div class="spinner"></div>
+            <h4>Analisando seu VSL...</h4>
+            <p class="text-muted">Este processo pode levar até 2 minutos. Por favor, aguarde.</p>
+        `;
+
+        form.style.display = 'none';
+        form.parentNode.appendChild(loadingDiv);
+    });
+
+    // Event listeners
+    vslTextarea.addEventListener('input', updateCounts);
+    vslTextarea.addEventListener('paste', function() {
+        // Update counts after paste
+        setTimeout(updateCounts, 100);
+    });
+
+    // Initial count update
+    updateCounts();
+});
+
+// Load Vitascience VSL
+function loadVitascienceVSL() {
+    const vitascienceVSL = `Na noite do ano de 1785, Antoine Lavoisier, um químico brilhante e famoso, descobriu o caminho para emagrecer sem sacrifícios.
+
+Essa descoberta, que ficou escondida até hoje, é a chave para toda mulher perder a gordura da barriga, culote e papada… dizendo ADEUS ao efeito sanfona.
+
+Independente se já passou dos 40 anos ou se precisa eliminar 5, 10 ou mais quilos.
+
+Por trás dessa descoberta, está a verdadeira razão:
+
+1 — Da atividade física não emagrecer por si só.
+
+2 — O porquê a maioria das pessoas que fazem bariátrica engordam tudo de novo.
+
+3 — E por que tomar remédios pra emagrecer acaba em efeito sanfona e aumentam o risco de desenvolver diabete.
+
+Lavoisier descobriu que, pra perder peso, não adianta fazer horas de atividade física…
+
+Se submeter a dietas altamente restritivas, cortando carboidratos, gorduras e açúcar da sua alimentação…
+
+Colocar a sua vida em risco entrando na faca pra fazer cirurgias e procedimentos estéticos caros e perigosos, como, por exemplo, a bariátrica e a lipoaspiração…
+
+Ou prejudicar a sua saúde tomando pílulas com propaganda milagrosa para emagrecer.
+
+Na verdade, o que ele descobriu é que existe um processo no seu corpo capaz de transformar a sua gordura em gás.
+
+É isso mesmo.
+
+Você pode simplesmente fazer sua gordura evaporar e perder 5, 10 ou mais quilos.
+
+E o melhor de tudo: você pode fazer isso simplesmente ao tomar esse poderoso suco que fica pronto em 15 segundinhos.
+
+Já imaginou isso?
+
+Você podendo:
+
+Ao se olhar no espelho, gostar de verdade do seu corpo…
+
+Se sentir mais bonita e feliz por ser magra…
+
+Colocar qualquer roupa sem nem passar pela sua cabeça preocupações como: será que meu braço está muito gordo ou minha barriga está marcando muito?
+
+E o melhor: poder vestir as roupas que mais gosta, mas que estavam guardadas em um cantinho do guarda-roupa.
+
+Então, se prepare para o que eu vou te falar nos próximos minutos: é muito rápido fazer a gordura do seu corpo virar gás e emagrecer sem sofrimento…
+
+Não importa:
+
+- Quantos quilos você precisa eliminar…
+- Qual a sua idade…
+- Onde você mora… seja no interior ou na capital…
+- Se acredita que sua genética é ruim…
+- Ou que depois dos 40 anos o metabolismo fica lento.
+
+A partir de agora, emagrecer será apenas uma questão de DIAS quando você descobrir:
+
+Como transformar a gordura em gás tomando um suco que fica pronto em apenas 15 segundos.
+
+E o melhor:
+
+Ainda neste vídeo vou te mostrar como você pode fazer este suco já nos próximos dias… aí mesmo da sua casa.
+
+Com esse hábito, você pode eliminar 2, 5 ou até mais quilos no primeiro mês, sem precisar necessariamente fazer exercícios físicos para isso.
+
+Mas o mais importante é que você vai abandonar pensamentos como:
+
+- "dietas não funcionam pra mim";
+- "meu corpo mudou, eu nunca vou conseguir emagrecer sem passar fome todo dia".
+
+Porque quando você começar a ver sua barriga diminuir com o que vai aprender aqui hoje, vai ficar muito fácil manter o seu peso ideal pelo tempo que você quiser.
+
+E assim, finalmente conseguir se LIBERTAR do ciclo de tentativas frustradas de perder peso.`;
+
+    const textarea = document.getElementById('vsl_text');
+    textarea.value = vitascienceVSL;
+
+    // Update counts and scroll to textarea
+    const event = new Event('input');
+    textarea.dispatchEvent(event);
+    textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Show success message
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check me-2"></i>VSL Carregada!';
+    btn.classList.remove('btn-success');
+    btn.classList.add('btn-outline-success');
+
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('btn-outline-success');
+        btn.classList.add('btn-success');
+    }, 2000);
+}
+</script>
+{% endblock %}
