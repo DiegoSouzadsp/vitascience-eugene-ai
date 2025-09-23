@@ -16,7 +16,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import uvicorn
 
-from src.eugene_rag_processor import EugeneRAGProcessor
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+from rag_query_service import RAGQueryService, get_rag_query_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,8 +43,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global RAG system instance
-rag_system: Optional[EugeneRAGProcessor] = None
+# Global RAG query service instance
+rag_query_service: Optional[RAGQueryService] = None
 
 # Pydantic models for API
 
@@ -90,39 +93,32 @@ class ProcessingStatus(BaseModel):
     message: str
     estimated_completion: Optional[str] = None
 
-# Dependency to get RAG system
-async def get_rag_system() -> EugeneRAGProcessor:
-    """Dependency para obter instância do sistema RAG"""
-    global rag_system
-    if rag_system is None:
-        raise HTTPException(status_code=503, detail="RAG system not initialized")
-    return rag_system
+# Dependency to get RAG query service
+async def get_rag_service() -> RAGQueryService:
+    """Dependency para obter instância do serviço RAG"""
+    global rag_query_service
+    if rag_query_service is None:
+        rag_query_service = await get_rag_query_service()
+    return rag_query_service
 
 # API Routes
 
 @app.on_event("startup")
 async def startup_event():
     """Inicialização do sistema na startup"""
-    global rag_system
+    global rag_query_service
 
-    logger.info("Initializing Eugene Schwartz RAG System...")
+    logger.info("Initializing Eugene Schwartz RAG Query Service...")
 
     try:
-        openai_api_key = os.getenv('OPENAI_API_KEY')
-        db_connection = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/eugene_rag')
-
-        if not openai_api_key:
-            logger.error("OPENAI_API_KEY environment variable required")
-            return
-
-        rag_system = EugeneRAGProcessor(openai_api_key, db_connection)
-        logger.info("RAG System initialized successfully")
+        rag_query_service = await get_rag_query_service()
+        logger.info("RAG Query Service initialized successfully")
 
     except Exception as e:
-        logger.error(f"Failed to initialize RAG system: {e}")
+        logger.error(f"Failed to initialize RAG Query Service: {e}")
 
 @app.get("/health", response_model=HealthCheckResponse)
-async def health_check(rag: EugeneRAGProcessor = Depends(get_rag_system)):
+async def health_check(rag: RAGQueryService = Depends(get_rag_service)):
     """
     Health check do sistema RAG
     """
@@ -130,15 +126,16 @@ async def health_check(rag: EugeneRAGProcessor = Depends(get_rag_system)):
     start_time = time.time()
 
     try:
-        stats = rag.database.get_statistics()
+        # Use new health check method
+        health_info = await rag.health_check()
         response_time = (time.time() - start_time) * 1000
 
         return HealthCheckResponse(
-            status="healthy" if stats['total_chunks'] > 0 else "no_data",
-            total_chunks=stats['total_chunks'],
-            category_distribution=stats['by_category'],
-            database_connection=True,
-            embedding_model="text-embedding-3-small",
+            status=health_info.get('status', 'unknown'),
+            total_chunks=health_info.get('total_records', 0),
+            category_distribution=health_info.get('category_distribution', {}),
+            database_connection=health_info.get('database_connected', False),
+            embedding_model=f"llm_agnostic_{health_info.get('primary_llm', 'unknown')}",
             response_time_ms=response_time
         )
 
@@ -149,24 +146,24 @@ async def health_check(rag: EugeneRAGProcessor = Depends(get_rag_system)):
 @app.post("/retrieve/consciousness", response_model=List[RetrievalResponse])
 async def retrieve_consciousness_context(
     request: ConsciousnessLevelRequest,
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Busca contexto específico para análise de níveis de consciência
     """
     try:
-        results = await rag.search_consciousness_context(
+        results = await rag.query_consciousness_levels(
             request.copy_text,
-            request.consciousness_level
+            max_results=5
         )
 
         return [
             RetrievalResponse(
-                content=result['content'],
-                similarity_score=result['similarity'],
-                category=result['category'],
-                chapter=result['chapter'],
-                metadata=result['metadata']
+                content=result.content,
+                similarity_score=result.similarity_score,
+                category=result.category,
+                chapter=result.chapter,
+                metadata=result.metadata
             )
             for result in results
         ]
@@ -178,7 +175,7 @@ async def retrieve_consciousness_context(
 @app.post("/retrieve/frameworks", response_model=List[RetrievalResponse])
 async def retrieve_framework_guidance(
     request: FrameworkRequest,
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Busca guidance sobre frameworks de copywriting
@@ -188,15 +185,15 @@ async def retrieve_framework_guidance(
         if request.industry:
             copy_type_query += f" {request.industry}"
 
-        results = await rag.get_framework_guidance(copy_type_query)
+        results = await rag.query_frameworks(copy_type_query, max_results=3)
 
         return [
             RetrievalResponse(
-                content=result['content'],
-                similarity_score=result['similarity'],
-                category=result['category'],
-                chapter=result['chapter'],
-                metadata=result['metadata']
+                content=result.content,
+                similarity_score=result.similarity_score,
+                category=result.category,
+                chapter=result.chapter,
+                metadata=result.metadata
             )
             for result in results
         ]
@@ -208,7 +205,7 @@ async def retrieve_framework_guidance(
 @app.post("/retrieve/improvements", response_model=List[RetrievalResponse])
 async def retrieve_improvement_techniques(
     request: ImprovementRequest,
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Busca técnicas específicas para melhorias identificadas
@@ -218,15 +215,15 @@ async def retrieve_improvement_techniques(
         if request.current_level:
             problem_query += f" consciousness level {request.current_level}"
 
-        results = await rag.get_improvement_techniques(problem_query)
+        results = await rag.query_techniques(problem_query, max_results=4)
 
         return [
             RetrievalResponse(
-                content=result['content'],
-                similarity_score=result['similarity'],
-                category=result['category'],
-                chapter=result['chapter'],
-                metadata=result['metadata']
+                content=result.content,
+                similarity_score=result.similarity_score,
+                category=result.category,
+                chapter=result.chapter,
+                metadata=result.metadata
             )
             for result in results
         ]
@@ -238,25 +235,25 @@ async def retrieve_improvement_techniques(
 @app.post("/retrieve/general", response_model=List[RetrievalResponse])
 async def general_retrieval(
     request: QueryRequest,
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Busca geral no conhecimento Eugene Schwartz
     """
     try:
-        # Use consciousness context as general retrieval with category filter
-        results = await rag.search_consciousness_context(request.query)
+        # Use general query method
+        results = await rag.query_by_category(request.query, None, request.max_results)
 
         # Limit results
         results = results[:request.max_results]
 
         return [
             RetrievalResponse(
-                content=result['content'],
-                similarity_score=result['similarity'],
-                category=result['category'],
-                chapter=result['chapter'],
-                metadata=result['metadata']
+                content=result.content,
+                similarity_score=result.similarity_score,
+                category=result.category,
+                chapter=result.chapter,
+                metadata=result.metadata
             )
             for result in results
         ]
@@ -269,7 +266,7 @@ async def general_retrieval(
 async def process_eugene_book(
     background_tasks: BackgroundTasks,
     md_path: str = "docs/breakthrough_advertising.md",
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Processa o livro Eugene Schwartz do arquivo MD
@@ -294,7 +291,7 @@ async def process_eugene_book(
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 @app.get("/categories")
-async def get_categories(rag: EugeneRAGProcessor = Depends(get_rag_system)):
+async def get_categories(rag: RAGQueryService = Depends(get_rag_service)):
     """
     Retorna categorias disponíveis no sistema
     """
@@ -304,22 +301,22 @@ async def get_categories(rag: EugeneRAGProcessor = Depends(get_rag_system)):
     }
 
 @app.get("/stats")
-async def get_system_stats(rag: EugeneRAGProcessor = Depends(get_rag_system)):
+async def get_system_stats(rag: RAGQueryService = Depends(get_rag_service)):
     """
     Estatísticas do sistema RAG
     """
     try:
-        stats = rag.database.get_statistics()
+        stats = await rag.health_check()
 
         return {
-            "total_chunks": stats['total_chunks'],
-            "category_distribution": stats['by_category'],
-            "consciousness_levels": stats['by_consciousness_level'],
+            "total_chunks": stats.get('total_records', 0),
+            "category_distribution": stats.get('category_distribution', {}),
+            "primary_llm": stats.get('primary_llm', 'unknown'),
+            "llm_status": stats.get('llm_status', 'unknown'),
             "configuration": {
-                "chunk_size": 1000,
-                "chunk_overlap": 200,
-                "embedding_model": "text-embedding-3-small",
-                "embedding_dimensions": 1536
+                "service_type": "llm_agnostic_rag_query",
+                "embedding_model": f"llm_agnostic_{stats.get('primary_llm', 'unknown')}",
+                "database_connected": stats.get('database_connected', False)
             }
         }
 
@@ -353,21 +350,21 @@ class ConsciousnessLevelQueryRequest(BaseModel):
 @app.post("/retrieve/consciousness-level", response_model=List[RetrievalResponse])
 async def retrieve_by_consciousness_level(
     request: ConsciousnessLevelQueryRequest,
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Busca específica por nível de consciência (1-5)
     """
     try:
-        results = await rag.search_consciousness_context(request.query, request.level, request.max_results)
+        results = await rag.query_consciousness_levels(request.query, request.max_results)
 
         return [
             RetrievalResponse(
-                content=result['content'],
-                similarity_score=result['similarity'],
-                category=result['category'],
-                chapter=result['chapter'],
-                metadata=result['metadata']
+                content=result.content,
+                similarity_score=result.similarity_score,
+                category=result.category,
+                chapter=result.chapter,
+                metadata=result.metadata
             )
             for result in results
         ]
@@ -379,7 +376,7 @@ async def retrieve_by_consciousness_level(
 @app.get("/test/embeddings")
 async def test_embeddings(
     text: str = "Test embedding generation",
-    rag: EugeneRAGProcessor = Depends(get_rag_system)
+    rag: RAGQueryService = Depends(get_rag_service)
 ):
     """
     Testa geração de embeddings
@@ -397,6 +394,44 @@ async def test_embeddings(
     except Exception as e:
         logger.error(f"Embedding test failed: {e}")
         raise HTTPException(status_code=500, detail=f"Embedding test failed: {str(e)}")
+
+@app.get("/test/database")
+async def test_database_simple(rag: RAGQueryService = Depends(get_rag_service)):
+    """
+    Testa busca simples no banco sem embeddings
+    """
+    try:
+        session = rag.Session()
+
+        result = session.execute(text("""
+            SELECT content, category, chapter
+            FROM eugene_knowledge
+            WHERE content ILIKE '%consciousness%'
+            LIMIT 3
+        """))
+
+        results = []
+        for row in result:
+            results.append({
+                "content": row.content[:200] + "..." if len(row.content) > 200 else row.content,
+                "category": row.category,
+                "chapter": row.chapter
+            })
+
+        session.close()
+
+        return {
+            "total_found": len(results),
+            "results": results,
+            "success": True
+        }
+
+    except Exception as e:
+        logger.error(f"Database test failed: {e}")
+        return {
+            "error": str(e),
+            "success": False
+        }
 
 if __name__ == "__main__":
     # Run the API server

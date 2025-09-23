@@ -3,7 +3,12 @@
     "allow": [
       "Bash(docker-compose up:*)",
       "Bash(pip install:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []

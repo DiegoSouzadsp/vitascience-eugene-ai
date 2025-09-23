@@ -22,6 +22,25 @@ services:
   # N8N removed - using remote instance on network
   # Remote N8N URL will be configured via environment variables
 
+  # LLM Embedding Service - porta 9000 (LLM-agnostic)
+  llm-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.llm-service
+    container_name: eugene_llm_service
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
   rag-api:
     build:
       context: .
@@ -31,10 +50,13 @@ services:
       - DATABASE_URL=postgresql://postgres:password@postgres-vector:5432/eugene_rag
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LLM_SERVICE_URL=http://llm-service:9000
     ports:
       - "8000:8000"
     depends_on:
       postgres-vector:
+        condition: service_healthy
+      llm-service:
         condition: service_healthy
     volumes:
       - ./src:/app/src

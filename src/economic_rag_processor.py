@@ -74,12 +74,11 @@ class EconomicEugeneRAG:
     Optimized for cost efficiency using text-embedding-3-small
     """
 
-    def __init__(self, database_url: str = None, openai_api_key: str = None):
+    def __init__(self, database_url: str = None, llm_service_url: str = None):
         self.database_url = database_url or os.getenv('DATABASE_URL')
-        self.openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
 
-        # Configure OpenAI client with cost-effective model
-        self.openai_client = OpenAI(api_key=self.openai_api_key) if self.openai_api_key else None
+        # Use LLM service for embeddings instead of direct OpenAI calls
+        self.llm_service_url = llm_service_url or os.getenv('LLM_SERVICE_URL', 'http://localhost:9000')
 
         # Database setup
         self.engine = None
@@ -342,22 +341,36 @@ class EconomicEugeneRAG:
 
     async def generate_embedding(self, text: str) -> Optional[List[float]]:
         """
-        Gera embedding usando OpenAI text-embedding-3-small (cost-effective)
+        Gera embedding usando LLM service (LLM-agnostic)
         """
         try:
-            if not self.openai_client:
-                logger.error("OpenAI client not configured")
-                return None
+            import aiohttp
+            import asyncio
 
             # Truncate text if too long to avoid excess costs
             if len(text) > 8000:  # Conservative limit
                 text = text[:8000] + "..."
 
-            response = self.openai_client.embeddings.create(
-                model=self.embedding_model,
-                input=text
-            )
-            return response.data[0].embedding
+            # Call LLM service for embeddings
+            url = f"{self.llm_service_url}/embeddings"
+            payload = {
+                "text": text,
+                "model": self.embedding_model
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        if result.get('success'):
+                            return result.get('embedding')
+                        else:
+                            logger.error(f"LLM service embedding failed: {result.get('error', 'Unknown error')}")
+                            return None
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"LLM service call failed with status {response.status}: {error_text}")
+                        return None
 
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
@@ -516,27 +529,26 @@ class EconomicEugeneRAG:
             # Generate query embedding
             query_embedding = await self.generate_embedding(query)
             if not query_embedding:
+                logger.error("Failed to generate embedding for query")
                 return []
 
+            logger.info(f"Generated embedding with {len(query_embedding)} dimensions")
             session = self.Session()
 
-            # Build query with consciousness filtering
-            where_clause = "category = 'consciousness_theory'"
-            if level:
-                where_clause += f" AND (meta_data->>'keyword_density')::jsonb ? 'consciousness_theory'"
+            # Simple query without complex filtering for debugging
+            # Convert embedding to proper format for PostgreSQL vector type
+            embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
 
+            # Use direct string formatting for vector operations
             sql_query = text(f"""
                 SELECT content, chapter, category, meta_data,
-                       embedding <-> :query_embedding::vector as similarity_score
+                       embedding <-> '{embedding_str}'::vector as similarity_score
                 FROM eugene_knowledge
-                WHERE {where_clause}
-                ORDER BY embedding <-> :query_embedding::vector
+                ORDER BY embedding <-> '{embedding_str}'::vector
                 LIMIT 5
             """)
 
-            result = session.execute(sql_query, {
-                'query_embedding': query_embedding
-            })
+            result = session.execute(sql_query)
 
             results = []
             for row in result:
@@ -548,6 +560,7 @@ class EconomicEugeneRAG:
                     metadata=row.meta_data or {}
                 ))
 
+            logger.info(f"Found {len(results)} results for query: {query}")
             session.close()
             return results
 
@@ -568,10 +581,10 @@ class EconomicEugeneRAG:
 
             sql_query = text("""
                 SELECT content, chapter, category, meta_data,
-                       embedding <-> :query_embedding::vector as similarity_score
+                       embedding <-> :query_embedding as similarity_score
                 FROM eugene_knowledge
                 WHERE category = 'frameworks'
-                ORDER BY embedding <-> :query_embedding::vector
+                ORDER BY embedding <-> :query_embedding
                 LIMIT 3
             """)
 
@@ -609,10 +622,10 @@ class EconomicEugeneRAG:
 
             sql_query = text("""
                 SELECT content, chapter, category, meta_data,
-                       embedding <-> :query_embedding::vector as similarity_score
+                       embedding <-> :query_embedding as similarity_score
                 FROM eugene_knowledge
                 WHERE category IN ('techniques', 'examples')
-                ORDER BY embedding <-> :query_embedding::vector
+                ORDER BY embedding <-> :query_embedding
                 LIMIT 4
             """)
 
@@ -661,11 +674,11 @@ class EconomicEugeneRAG:
             # Search across all categories for consciousness level content
             sql_query = text("""
                 SELECT content, chapter, category, meta_data,
-                       embedding <-> :query_embedding::vector as similarity_score
+                       embedding <-> :query_embedding as similarity_score
                 FROM eugene_knowledge
                 WHERE (meta_data->>'keyword_density')::jsonb ? 'consciousness_theory'
                    OR category = 'consciousness_theory'
-                ORDER BY embedding <-> :query_embedding::vector
+                ORDER BY embedding <-> :query_embedding
                 LIMIT :max_results
             """)
 
@@ -689,6 +702,35 @@ class EconomicEugeneRAG:
 
         except Exception as e:
             logger.error(f"Consciousness level search failed: {e}")
+            return []
+
+    async def search_consciousness_context(self, query: str, consciousness_level: Optional[int] = None, max_results: int = 5) -> List[Dict[str, Any]]:
+        """
+        Busca contexto específico para análise de níveis de consciência
+        Compatible method for RAG API
+        """
+        try:
+            if consciousness_level:
+                results = await self.search_by_consciousness_level(consciousness_level, query, max_results)
+            else:
+                # General consciousness search using get_consciousness_level_context
+                results = await self.get_consciousness_level_context(query)
+                results = results[:max_results]
+
+            # Convert to the format expected by RAG API
+            return [
+                {
+                    'content': result.content,
+                    'similarity': result.similarity_score,
+                    'category': result.category,
+                    'chapter': result.chapter,
+                    'metadata': result.metadata
+                }
+                for result in results
+            ]
+
+        except Exception as e:
+            logger.error(f"Consciousness context search failed: {e}")
             return []
 
 # Test and utility functions

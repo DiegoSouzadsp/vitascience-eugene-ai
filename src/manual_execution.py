@@ -105,79 +105,101 @@ class ManualEugeneAnalyzer:
     async def analyze_consciousness_level(self, vsl_text: str, context: str) -> Dict[str, Any]:
         """Análise de nível de consciência"""
         try:
+            # Force retry with detailed logging
+            logger.info(f"Analyzing consciousness for VSL (length: {len(vsl_text)} chars)")
+
             result = await self.prompt_system.execute_prompt('consciousness', vsl_text)
 
             if result.get('success'):
+                logger.info("Consciousness analysis successful")
                 return {
                     "success": True,
                     "analysis": result['result'],
                     "execution_time": time.time()
                 }
             else:
-                return {
-                    "success": False,
-                    "error": result.get('error'),
-                    "fallback_analysis": {
-                        "nivel_identificado": 3,  # Default to level 3
-                        "confianca": 0.5,
-                        "justificativa": "Analysis failed - using default level 3 (solution-aware)",
-                        "indicadores_textuais": ["Unable to analyze - system error"],
-                        "nivel_ideal_sugerido": 3,
-                        "razao_sugestao": "Default suggestion due to analysis failure"
+                # Instead of fallback, retry with simplified prompt
+                logger.warning(f"First consciousness analysis failed: {result.get('error')}")
+
+                # Force direct LLM call if prompt system fails
+                try:
+                    import openai
+                    client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+                    simple_prompt = f"""Você é Eugene Schwartz analisando esta VSL:
+
+{vsl_text[:2000]}
+
+Classifique nos 5 níveis de consciência (1-5) e retorne JSON:
+{{"nivel_identificado": 1-5, "confianca": 0.0-1.0, "justificativa": "análise detalhada", "indicadores_textuais": ["trecho1", "trecho2", "trecho3"], "nivel_ideal_sugerido": 1-5, "razao_sugestao": "explicação"}}"""
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": simple_prompt}],
+                        temperature=0.1
+                    )
+
+                    return {
+                        "success": True,
+                        "analysis": response.choices[0].message.content,
+                        "fallback_used": True
                     }
-                }
+
+                except Exception as llm_error:
+                    logger.error(f"Direct LLM call also failed: {llm_error}")
+                    raise Exception(f"Both prompt system and direct LLM failed: {result.get('error')} | {llm_error}")
 
         except Exception as e:
-            logger.error(f"Consciousness analysis failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "fallback_analysis": {
-                    "nivel_identificado": 3,
-                    "confianca": 0.0,
-                    "justificativa": f"Analysis failed due to error: {e}",
-                    "indicadores_textuais": ["System error prevented analysis"],
-                    "nivel_ideal_sugerido": 3,
-                    "razao_sugestao": "Default due to system error"
-                }
-            }
+            logger.error(f"CRITICAL: All consciousness analysis methods failed: {e}")
+            raise Exception(f"Consciousness analysis completely failed: {e}")
 
     async def analyze_framework_structure(self, vsl_text: str, context: str) -> Dict[str, Any]:
         """Análise de estrutura do framework"""
         try:
+            logger.info(f"Analyzing framework structure for VSL")
+
             result = await self.prompt_system.execute_prompt('framework', vsl_text)
 
             if result.get('success'):
+                logger.info("Framework analysis successful")
                 return {
                     "success": True,
                     "analysis": result['result']
                 }
             else:
-                return {
-                    "success": False,
-                    "error": result.get('error'),
-                    "fallback_analysis": {
-                        "framework_principal": "Estrutura Indefinida",
-                        "confianca_identificacao": 0.0,
-                        "elementos_presentes": [],
-                        "pontos_fortes_estruturais": [],
-                        "pontos_fracos_estruturais": ["Unable to analyze structure due to system error"]
+                # Force direct LLM call for framework analysis
+                logger.warning(f"Framework analysis failed, trying direct LLM: {result.get('error')}")
+
+                try:
+                    import openai
+                    client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+                    framework_prompt = f"""Você é Eugene Schwartz analisando a estrutura desta VSL:
+
+{vsl_text[:2000]}
+
+Identifique o framework de copywriting (PAS, AIDA, BAB, etc.) e retorne JSON:
+{{"framework_principal": "nome do framework", "confianca_identificacao": 0.0-1.0, "elementos_presentes": [lista de elementos], "pontos_fortes_estruturais": ["força1", "força2"], "pontos_fracos_estruturais": ["fraco1", "fraco2"]}}"""
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role": "user", "content": framework_prompt}],
+                        temperature=0.1
+                    )
+
+                    return {
+                        "success": True,
+                        "analysis": response.choices[0].message.content,
+                        "fallback_used": True
                     }
-                }
+
+                except Exception as llm_error:
+                    logger.error(f"Direct framework LLM call failed: {llm_error}")
+                    raise Exception(f"Framework analysis completely failed: {result.get('error')} | {llm_error}")
 
         except Exception as e:
-            logger.error(f"Framework analysis failed: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "fallback_analysis": {
-                    "framework_principal": "Error",
-                    "confianca_identificacao": 0.0,
-                    "elementos_presentes": [],
-                    "pontos_fortes_estruturais": [],
-                    "pontos_fracos_estruturais": [f"Analysis error: {e}"]
-                }
-            }
+            logger.error(f"CRITICAL: Framework analysis completely failed: {e}")
+            raise Exception(f"Framework analysis failed: {e}")
 
     async def identify_problems(self, vsl_text: str, context: str) -> Dict[str, Any]:
         """Identificação de problemas"""
