@@ -52,12 +52,22 @@ python scripts/rag_vectorize_eugene.py
 3. Importe: `n8n/workflows/VITASCIENCE.json`
 4. Ative o workflow
 
-### **5. Testar Sistema**
+### **5. Iniciar Frontend (separadamente)**
 ```bash
-# Interface web
-http://localhost:3000
+# O frontend Flask roda separadamente do Docker
+cd frontend
+pip install -r requirements.txt
+python app.py
 
-# Webhook direto
+# Acesse: http://localhost:8080
+```
+
+### **6. Testar Sistema**
+```bash
+# Interface web Flask
+http://localhost:8080
+
+# Ou teste direto o webhook N8N
 curl -X POST http://localhost:5678/webhook/analyze-vsl-eugene-rag \
   -H "Content-Type: application/json" \
   -d '{"vsl_text": "seu texto de VSL aqui..."}'

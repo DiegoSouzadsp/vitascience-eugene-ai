@@ -1,11 +1,12 @@
 # 🚀 **INSTRUÇÕES DE INSTALAÇÃO - Eugene Schwartz VSL Analyzer**
 
-## ⚡ **INSTALAÇÃO RÁPIDA (5 minutos)**
+## ⚡ **INSTALAÇÃO RÁPIDA (10 minutos)**
 
 ### **1️⃣ Pré-requisitos**
-- ✅ Docker Desktop instalado
-- ✅ Chave API OpenAI
-- ✅ Python 3.9+
+- ✅ Docker Desktop instalado e rodando
+- ✅ Chave API OpenAI (com créditos)
+- ✅ Python 3.9+ instalado
+- ✅ Git instalado
 
 ### **2️⃣ Configuração**
 ```bash
@@ -42,9 +43,19 @@ python scripts/rag_vectorize_eugene.py
 # 4. Ative o workflow
 ```
 
-### **6️⃣ Testar Sistema**
+### **6️⃣ Iniciar Frontend Flask**
 ```bash
-# Interface web: http://localhost:3000
+# O frontend roda separadamente do Docker
+cd frontend
+pip install -r requirements.txt
+python app.py
+
+# Acesse a interface: http://localhost:8080
+```
+
+### **7️⃣ Testar Sistema**
+```bash
+# Interface web Flask: http://localhost:8080
 # Ou teste direto o webhook N8N:
 
 curl -X POST http://localhost:5678/webhook/analyze-vsl-eugene-rag \
@@ -102,6 +113,28 @@ ls -la n8n/workflows/VITASCIENCE.json
 
 # Tentar restart do N8N:
 docker restart eugene_n8n
+```
+
+### **Frontend não conecta:**
+```bash
+# Verificar se Flask está rodando:
+cd frontend
+python app.py
+# Deve mostrar: Running on http://127.0.0.1:8080
+
+# Verificar dependências:
+pip install -r requirements.txt
+```
+
+### **Erro no webhook:**
+```bash
+# Verificar se N8N workflow está ativo:
+# Ir em http://localhost:5678 e verificar workflow "Eugene VSL Analyzer"
+
+# Testar webhook direto:
+curl -X POST http://localhost:5678/webhook/analyze-vsl-eugene-rag \
+  -H "Content-Type: application/json" \
+  -d '{"vsl_text": "teste"}'
 ```
 
 ---
