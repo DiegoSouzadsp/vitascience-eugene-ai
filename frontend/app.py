@@ -19,8 +19,10 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'eugene-schwartz-vsl-analyzer-2024')
 
 # Configuration
-N8N_WEBHOOK_URL = os.getenv('N8N_WEBHOOK_URL', 'http://localhost:5678/webhook/analyze-vsl-eugene-rag')
-N8N_BASE_URL = os.getenv('N8N_BASE_URL', 'http://localhost:5678')
+N8N_URL = os.getenv('N8N_URL', 'http://localhost:5678')
+N8N_WEBHOOK_PATH = os.getenv('N8N_WEBHOOK_PATH', '/webhook/analyze-vsl-eugene-rag')
+N8N_WEBHOOK_URL = f"{N8N_URL}{N8N_WEBHOOK_PATH}"
+N8N_BASE_URL = N8N_URL
 
 class VSLAnalyzer:
     """Interface for VSL analysis via N8N workflow"""

@@ -80,7 +80,7 @@ async def create_embeddings(request: EmbeddingRequest):
     """Create embeddings using OpenAI"""
 
     if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, "OpenAI API key not configured")
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -101,7 +101,7 @@ async def create_embeddings(request: EmbeddingRequest):
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    raise HTTPException(status_code=response.status, f"OpenAI API error: {error_text}")
+                    raise HTTPException(status_code=response.status, detail=f"OpenAI API error: {error_text}")
 
                 data = await response.json()
 
@@ -113,7 +113,7 @@ async def create_embeddings(request: EmbeddingRequest):
                 )
 
     except Exception as e:
-        raise HTTPException(status_code=500, f"Embedding generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Embedding generation failed: {str(e)}")
 
 # LLM completion endpoint
 @app.post("/completions", response_model=LLMResponse)
@@ -125,13 +125,13 @@ async def create_completion(request: LLMRequest):
     elif "claude" in request.model.lower():
         return await anthropic_completion(request)
     else:
-        raise HTTPException(status_code=400, f"Unsupported model: {request.model}")
+        raise HTTPException(status_code=400, detail=f"Unsupported model: {request.model}")
 
 async def openai_completion(request: LLMRequest) -> LLMResponse:
     """OpenAI completion"""
 
     if not OPENAI_API_KEY:
-        raise HTTPException(status_code=500, "OpenAI API key not configured")
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -154,7 +154,7 @@ async def openai_completion(request: LLMRequest) -> LLMResponse:
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    raise HTTPException(status_code=response.status, f"OpenAI API error: {error_text}")
+                    raise HTTPException(status_code=response.status, detail=f"OpenAI API error: {error_text}")
 
                 data = await response.json()
 
@@ -166,13 +166,13 @@ async def openai_completion(request: LLMRequest) -> LLMResponse:
                 )
 
     except Exception as e:
-        raise HTTPException(status_code=500, f"OpenAI completion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"OpenAI completion failed: {str(e)}")
 
 async def anthropic_completion(request: LLMRequest) -> LLMResponse:
     """Anthropic Claude completion"""
 
     if not ANTHROPIC_API_KEY:
-        raise HTTPException(status_code=500, "Anthropic API key not configured")
+        raise HTTPException(status_code=500, detail="Anthropic API key not configured")
 
     try:
         # Convert messages format for Anthropic
@@ -206,7 +206,7 @@ async def anthropic_completion(request: LLMRequest) -> LLMResponse:
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    raise HTTPException(status_code=response.status, f"Anthropic API error: {error_text}")
+                    raise HTTPException(status_code=response.status, detail=f"Anthropic API error: {error_text}")
 
                 data = await response.json()
 
@@ -218,7 +218,7 @@ async def anthropic_completion(request: LLMRequest) -> LLMResponse:
                 )
 
     except Exception as e:
-        raise HTTPException(status_code=500, f"Anthropic completion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Anthropic completion failed: {str(e)}")
 
 # Statistics endpoint
 @app.get("/stats")

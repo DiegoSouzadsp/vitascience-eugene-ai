@@ -42,10 +42,16 @@ app.add_middleware(
 
 # Pydantic models
 class RAGQuery(BaseModel):
-    query: str = Field(..., description="Search query for RAG retrieval")
+    query: Optional[str] = Field(None, description="Search query for RAG retrieval")
+    copy_text: Optional[str] = Field(None, description="Alternative field for query (N8N compatibility)")
     max_results: int = Field(default=5, ge=1, le=20, description="Maximum number of results")
     min_similarity: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum similarity threshold")
     category: Optional[str] = Field(default=None, description="Filter by category")
+
+    @property
+    def search_query(self) -> str:
+        """Get query from either query or copy_text field"""
+        return self.query or self.copy_text or ""
 
 class RAGChunk(BaseModel):
     content: str
@@ -68,13 +74,13 @@ def get_db_connection():
         conn = psycopg2.connect(DATABASE_URL)
         return conn
     except Exception as e:
-        raise HTTPException(status_code=500, f"Database connection failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {str(e)}")
 
 # Generate embedding
 async def generate_embedding(text: str) -> List[float]:
     """Generate embedding for text using OpenAI"""
     if not client:
-        raise HTTPException(status_code=500, "OpenAI API key not configured")
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
 
     try:
         response = client.embeddings.create(
@@ -83,7 +89,7 @@ async def generate_embedding(text: str) -> List[float]:
         )
         return response.data[0].embedding
     except Exception as e:
-        raise HTTPException(status_code=500, f"Failed to generate embedding: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate embedding: {str(e)}")
 
 # RAG retrieval function
 async def retrieve_chunks(
@@ -108,15 +114,17 @@ async def retrieve_chunks(
         base_query = """
             SELECT
                 content,
-                metadata,
+                meta_data,
+                category,
+                chapter,
                 embedding <=> %s::vector as similarity_score
-            FROM eugene_embeddings
+            FROM eugene_knowledge
         """
 
         params = [str(query_embedding)]
 
         if category:
-            base_query += " WHERE metadata->>'category' = %s"
+            base_query += " WHERE category = %s"
             params.append(category)
 
         base_query += """
@@ -129,7 +137,7 @@ async def retrieve_chunks(
         results = cur.fetchall()
 
         chunks = []
-        for content, metadata_json, similarity_score in results:
+        for content, metadata_json, cat, chap, similarity_score in results:
             # Convert similarity distance to similarity score
             similarity = 1 - similarity_score
 
@@ -138,8 +146,8 @@ async def retrieve_chunks(
 
                 chunk = RAGChunk(
                     content=content,
-                    category=metadata.get('category', 'general'),
-                    chapter=metadata.get('chapter'),
+                    category=cat or category or 'general',
+                    chapter=chap,
                     similarity_score=similarity,
                     metadata=metadata
                 )
@@ -160,7 +168,7 @@ async def health_check():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM eugene_embeddings")
+        cur.execute("SELECT COUNT(*) FROM eugene_knowledge")
         count = cur.fetchone()[0]
         conn.close()
 
@@ -172,7 +180,7 @@ async def health_check():
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        raise HTTPException(status_code=500, f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 # Generic retrieve endpoint
 @app.post("/retrieve/{category}")
@@ -186,7 +194,7 @@ async def retrieve_by_category(
 
     try:
         chunks = await retrieve_chunks(
-            query=query_data.query,
+            query=query_data.search_query,
             max_results=query_data.max_results,
             min_similarity=query_data.min_similarity,
             category=category
@@ -196,7 +204,7 @@ async def retrieve_by_category(
 
         response = RAGResponse(
             chunks=chunks,
-            query=query_data.query,
+            query=query_data.search_query,
             total_found=len(chunks),
             processing_time_ms=processing_time,
             timestamp=datetime.now().isoformat()
@@ -205,12 +213,18 @@ async def retrieve_by_category(
         return response
 
     except Exception as e:
-        raise HTTPException(status_code=500, f"Retrieval failed: {str(e)}")
+        import traceback
+        error_detail = f"Retrieval failed: {str(e)}\n{traceback.format_exc()}"
+        print(f"ERROR in retrieve_by_category: {error_detail}")
+        raise HTTPException(status_code=500, detail=error_detail)
 
 # Consciousness-specific endpoint
 @app.post("/retrieve/consciousness")
 async def retrieve_consciousness(query_data: RAGQuery):
     """Retrieve consciousness-related chunks"""
+    # Use search_query property to get query from either field
+    if not query_data.search_query:
+        raise HTTPException(status_code=400, detail="Either 'query' or 'copy_text' field is required")
     return await retrieve_by_category("consciousness_theory", query_data)
 
 # Frameworks-specific endpoint
@@ -246,7 +260,7 @@ async def search_all(query_data: RAGQuery):
 
     try:
         chunks = await retrieve_chunks(
-            query=query_data.query,
+            query=query_data.search_query,
             max_results=query_data.max_results,
             min_similarity=query_data.min_similarity,
             category=query_data.category
@@ -256,7 +270,7 @@ async def search_all(query_data: RAGQuery):
 
         response = RAGResponse(
             chunks=chunks,
-            query=query_data.query,
+            query=query_data.search_query,
             total_found=len(chunks),
             processing_time_ms=processing_time,
             timestamp=datetime.now().isoformat()
@@ -265,7 +279,7 @@ async def search_all(query_data: RAGQuery):
         return response
 
     except Exception as e:
-        raise HTTPException(status_code=500, f"Search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 # Statistics endpoint
 @app.get("/stats")
@@ -276,17 +290,17 @@ async def get_stats():
         cur = conn.cursor()
 
         # Total chunks
-        cur.execute("SELECT COUNT(*) FROM eugene_embeddings")
+        cur.execute("SELECT COUNT(*) FROM eugene_knowledge")
         total_chunks = cur.fetchone()[0]
 
         # Chunks by category
         cur.execute("""
             SELECT
-                metadata->>'category' as category,
+                category,
                 COUNT(*) as count
-            FROM eugene_embeddings
-            WHERE metadata->>'category' IS NOT NULL
-            GROUP BY metadata->>'category'
+            FROM eugene_knowledge
+            WHERE category IS NOT NULL
+            GROUP BY category
             ORDER BY count DESC
         """)
         categories = dict(cur.fetchall())
@@ -302,7 +316,7 @@ async def get_stats():
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, f"Stats failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

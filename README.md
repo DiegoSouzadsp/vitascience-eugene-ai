@@ -9,6 +9,7 @@ Sistema de análise de Video Sales Letters (VSLs) baseado na metodologia complet
 - 🧠 **Análise por IA** baseada no conhecimento real de Eugene Schwartz
 - ⚡ **RAG dinâmico** com filtragem por relevância
 - 🔄 **N8N Workflow** completo para automação
+- 🤖 **OpenAI GPT-4o-mini** otimizado para análise
 - 🎨 **Interface web** funcional para testes
 - 📊 **PostgreSQL + pgvector** para busca semântica otimizada
 
@@ -18,7 +19,7 @@ Sistema de análise de Video Sales Letters (VSLs) baseado na metodologia complet
 
 ### **Pré-requisitos**
 - Docker & Docker Compose
-- Chave da API OpenAI
+- Chave de API OpenAI
 - Python 3.9+ (para vetorização)
 
 ### **1. Configuração**
@@ -29,7 +30,8 @@ cd vitascience-eugene-ai
 
 # Configure variáveis de ambiente
 cp .env.example .env
-# Edite .env com suas chaves de API
+# Edite .env e adicione sua chave OpenAI:
+# OPENAI_API_KEY=sk-proj-sua-chave-aqui
 ```
 
 ### **2. Executar Sistema**
@@ -70,7 +72,7 @@ http://localhost:8080
 # Ou teste direto o webhook N8N
 curl -X POST http://localhost:5678/webhook/analyze-vsl-eugene-rag \
   -H "Content-Type: application/json" \
-  -d '{"vsl_text": "seu texto de VSL aqui..."}'
+  -d '{"vsl_text": "Descoberta revolucionária para emagrecimento rápido e natural."}'
 ```
 
 ---
@@ -106,11 +108,11 @@ vitascience-eugene-ai/
 - Busca semântica com embeddings OpenAI
 - Filtragem dinâmica por relevância (70%+)
 
-### **2. N8N Workflow (VITASCIENCE.json)**
+### **2. N8N Workflow**
 - Processamento inteligente de entrada
 - RAG dinâmico com múltiplas queries
-- Integração OpenAI GPT-4o-mini
-- Formatação de resultados estruturados
+- Integração OpenAI GPT-4o-mini otimizada
+- Formatação de resultados estruturados JSON
 
 ### **3. Frontend Web**
 - Interface Flask responsiva
@@ -123,10 +125,11 @@ vitascience-eugene-ai/
 ## 📊 **Documentação Técnica**
 
 ### **Arquivos Principais de Documentação:**
+- `INSTRUCOES_INSTALACAO.md` - **Guia completo de instalação e configuração**
 - `VITASCIENCE_DELIVERY/VECTORIZATION_GUIDE.md` - Guia completo de vetorização
 - `VITASCIENCE_DELIVERY/docs/ARCHITECTURE.md` - Arquitetura do sistema
-- `VITASCIENCE_DELIVERY/docs/DIAGRAMS_MERMAID.md` - Diagramas técnicos
 - `VITASCIENCE_DELIVERY/DEMO_VITASCIENCE.md` - Demonstração e casos de uso
+- `docs/ENTREGAVEIS_SQUAD_VITASCIENCE.md` - Checklist de entregáveis
 
 ### **Para Desenvolvedores:**
 - `DEVELOPMENT_ARCHIVE/` contém todo o histórico de desenvolvimento

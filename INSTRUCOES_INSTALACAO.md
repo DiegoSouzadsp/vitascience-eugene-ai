@@ -36,12 +36,12 @@ python scripts/rag_vectorize_eugene.py
 ```
 
 ### **5️⃣ Importar Workflow N8N**
-```bash
-# 1. Acesse: http://localhost:5678
-# 2. Login: admin / password
-# 3. Import > n8n/workflows/VITASCIENCE.json
-# 4. Ative o workflow
-```
+1. Acesse: http://localhost:5678
+2. Login: `admin` / `password`
+3. Click em "Import from file"
+4. Selecione: `n8n/workflows/VITASCIENCE.json`
+5. Click em "Import"
+6. **Ative o workflow** (toggle no canto superior direito)
 
 ### **6️⃣ Iniciar Frontend Flask**
 ```bash

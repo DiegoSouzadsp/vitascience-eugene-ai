@@ -13,8 +13,12 @@ from datetime import datetime
 import re
 
 # Configurações
-DATABASE_URL = "postgresql://postgres:password@localhost:5432/eugene_rag"
-OPENAI_API_KEY = "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"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/eugene_rag")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Validar API key
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY não encontrada! Configure no arquivo .env")
 
 def setup_database():
     """Setup PostgreSQL com pgvector"""
